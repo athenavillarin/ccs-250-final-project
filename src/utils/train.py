@@ -14,12 +14,11 @@ from src.utils.image import resize_long
 
 
 def bce_dice_loss(logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    """Binary cross-entropy plus soft Dice loss on single-channel logits."""
+    """Binary cross-entropy plus batch-level soft Dice, which stays well-defined for flood-free images."""
     bce = F.binary_cross_entropy_with_logits(logits, target)
     prob = torch.sigmoid(logits)
-    inter = (prob * target).sum((1, 2, 3))
-    dice = 1 - (2 * inter + 1) / (prob.sum((1, 2, 3)) + target.sum((1, 2, 3)) + 1)
-    return bce + dice.mean()
+    dice = 1 - (2 * (prob * target).sum() + 1) / (prob.sum() + target.sum() + 1)
+    return bce + dice
 
 
 def forward_padded(model, x: torch.Tensor) -> torch.Tensor:
