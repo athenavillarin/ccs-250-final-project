@@ -243,7 +243,7 @@ def domain_grid(picks: list[tuple[str, str]], path: Path) -> None:
             ax.imshow(img)
             ax.set_title(label, fontsize=8)
             ax.axis("off")
-    fig.suptitle("Same images, FloodNet-only vs mixed training")
+    fig.suptitle("Same images, FloodNet-only vs mixed training", y=1.01)
     fig.tight_layout(h_pad=2.0)
     save(fig, path)
 
