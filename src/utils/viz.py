@@ -46,3 +46,24 @@ def save(fig, path: str | Path) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path)
     plt.close(fig)
+
+
+def plot_curves(history, title: str, path: str | Path) -> None:
+    """Plot train/val loss and val mIoU per epoch, marking the best epoch."""
+    best = history.loc[history["val_miou"].idxmax()]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.5))
+    ax1.plot(history["epoch"], history["train_loss"], color=SERIES[0], label="Train")
+    ax1.plot(history["epoch"], history["val_loss"], color=SERIES[1], label="Validation")
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("BCE + Dice loss (unitless)")
+    ax1.set_title("Loss")
+    ax1.legend()
+    ax2.plot(history["epoch"], history["val_miou"], color=SERIES[1])
+    ax2.axvline(best["epoch"], color=INK_2, linestyle="--", linewidth=1)
+    ax2.annotate(f"best {best['val_miou']:.1f}% @ epoch {int(best['epoch'])}", (best["epoch"], best["val_miou"]),
+                 xytext=(6, -14), textcoords="offset points", color=INK_2, fontsize=9)
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Validation mIoU (%)")
+    ax2.set_title("Validation mIoU")
+    fig.suptitle(title)
+    save(fig, path)
