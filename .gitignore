@@ -220,8 +220,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Project
-data/
-checkpoints/
+/data/
+/checkpoints/
 *.pt
 *.pth
 *.safetensors
