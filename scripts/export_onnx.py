@@ -14,10 +14,10 @@ from src.utils.paths import CHECKPOINT_DIR
 
 
 def main() -> None:
-    """Write checkpoints/{method}_train_s42.onnx with dynamic height and width plus side and params metadata."""
+    """Write checkpoints/{method}_mixed_s42.onnx with dynamic height and width plus side and params metadata."""
     for key in ("scratch", "pretrained"):
         model = METHODS[key]["module"].load(None, "cpu")
-        path = CHECKPOINT_DIR / f"{key}_train_s42.onnx"
+        path = CHECKPOINT_DIR / f"{key}_mixed_s42.onnx"
         dummy = torch.rand(1, 3, TRAIN_SIDE, TRAIN_SIDE)
         torch.onnx.export(model, dummy, path, input_names=["image"], output_names=["logits"], opset_version=17,
                           dynamic_axes={"image": {2: "height", 3: "width"}, "logits": {2: "height", 3: "width"}},

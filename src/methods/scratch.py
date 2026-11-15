@@ -6,7 +6,7 @@ from torch import nn
 from src.utils.paths import CHECKPOINT_DIR
 from src.utils.train import predict_mask
 
-DEFAULT_CHECKPOINT = CHECKPOINT_DIR / "scratch_train_s42.pt"
+DEFAULT_CHECKPOINT = CHECKPOINT_DIR / "scratch_mixed_s42.pt"
 MEAN = (0.485, 0.456, 0.406)
 STD = (0.229, 0.224, 0.225)
 

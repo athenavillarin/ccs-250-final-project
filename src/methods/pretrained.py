@@ -10,7 +10,7 @@ from src.utils.paths import CHECKPOINT_DIR
 from src.utils.train import predict_mask
 
 PRETRAINED = "nvidia/mit-b0"
-DEFAULT_CHECKPOINT = CHECKPOINT_DIR / "pretrained_train_s42.pt"
+DEFAULT_CHECKPOINT = CHECKPOINT_DIR / "pretrained_mixed_s42.pt"
 
 
 class SegFormer(nn.Module):

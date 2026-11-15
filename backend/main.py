@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
         onnx = RUNTIME == "onnx" and key != "classical"
         try:
             module = import_module(f"src.methods.{'onnx_model' if onnx else key}")
-            model = module.load(CHECKPOINT_DIR / f"{key}_train_s42.onnx" if onnx else None, DEVICE)
+            model = module.load(CHECKPOINT_DIR / f"{key}_mixed_s42.onnx" if onnx else None, DEVICE)
             module.predict(model, np.zeros((64, 64, 3), np.uint8))
             MODELS[key] = (module, model)
         except FileNotFoundError as exc:
