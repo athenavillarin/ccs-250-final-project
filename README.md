@@ -67,7 +67,7 @@ uvicorn backend.main:app --port 8000
 | `POST /segment` | multipart `image` plus optional `methods` (e.g. `classical,pretrained`); returns per-method RGBA mask PNG (base64), % flooded, runtime (ms), params (M) |
 | `GET /recommendation` | best method by test mIoU from `results/main_results.csv`, a short explanation, and the results table |
 
-Environment variables: `FLOOD_DEVICE` (`cpu` or `cuda`), `FLOOD_CORS_ORIGINS` (comma-separated, default `*`). To expose a local or Colab backend for a demo, run `cloudflared tunnel --url http://localhost:8000` and use the printed URL as `VITE_API_URL`.
+Environment variables: `FLOOD_DEVICE` (`cpu` or `cuda`), `FLOOD_RUNTIME` (`torch` or `onnx`), `FLOOD_THREADS` (ONNX Runtime threads), `FLOOD_CORS_ORIGINS` (comma-separated, default `*`). To expose a local or Colab backend for a demo, run `cloudflared tunnel --url http://localhost:8000` and use the printed URL as `VITE_API_URL`.
 
 ### Frontend
 
@@ -82,4 +82,6 @@ If `frontend/dist` exists (built with `VITE_API_URL=` empty), the backend also s
 
 ### Deployment
 
-The app is hosted on a free Hugging Face Space (Docker, CPU basic). [deploy/space/](deploy/space/) holds the Space's `Dockerfile` and `README.md`. The image clones this repo's `main`, builds the frontend, installs CPU PyTorch, downloads the release checkpoints, and serves everything on port 7860. To set it up, create a Docker Space and upload those two files. Every rebuild picks up the latest `main`; trigger one from the Space settings ("Factory rebuild").
+The app runs on a free [Render](https://render.com) web service (512 MB RAM, 0.1 CPU) defined in [render.yaml](render.yaml) and [deploy/Dockerfile](deploy/Dockerfile). To fit that instance it skips PyTorch: `scripts/export_onnx.py` exports the U-Net and SegFormer to ONNX, and the backend runs them with ONNX Runtime when `FLOOD_RUNTIME=onnx`. On the test set the ONNX masks give the same mIoU as PyTorch. The image builds the frontend, installs only [deploy/requirements.txt](deploy/requirements.txt), downloads `classical.npz` and the ONNX models from the release, and serves the API and UI from one URL.
+
+To deploy: sign in to Render with GitHub, choose **New > Blueprint**, select this repo, and apply. Each push to `main` redeploys. The free service sleeps after 15 minutes idle and takes about a minute to wake on the next visit.
