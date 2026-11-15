@@ -1,4 +1,4 @@
-"""Shared FloodNet loading so every method reads the same splits and binary masks."""
+"""Shared loading for FloodNet and out-of-domain sets so every method reads the same splits and binary masks."""
 from pathlib import Path
 
 import numpy as np
@@ -18,17 +18,20 @@ def read_split(name: str) -> list[str]:
     return (SPLITS_DIR / f"{name}.txt").read_text().split()
 
 
+OOD_SPLITS = ("kaggle",)
+
+
 def split_dir(name: str) -> Path:
-    """Map a split name (e.g. 'train_25') to its official folder on disk."""
-    return DATA_DIR / "floodnet" / name.split("_")[0]
+    """Map a split name (e.g. 'train_25', 'kaggle') to its folder on disk."""
+    return DATA_DIR / name if name in OOD_SPLITS else DATA_DIR / "floodnet" / name.split("_")[0]
 
 
 def load_pair(split: str, image_id: str) -> tuple[np.ndarray, np.ndarray]:
     """Load an HxWx3 uint8 RGB image and its HxW uint8 binary flood mask."""
     root = split_dir(split)
     image = np.asarray(Image.open(root / "images" / f"{image_id}.jpg").convert("RGB"))
-    mask = to_binary(np.asarray(Image.open(root / "masks" / f"{image_id}.png")))
-    return image, mask
+    mask = np.asarray(Image.open(root / "masks" / f"{image_id}.png"))
+    return image, mask if split in OOD_SPLITS else to_binary(mask)
 
 
 TRAIN_SIDE = 512
