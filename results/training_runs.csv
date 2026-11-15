@@ -1,0 +1,2 @@
+method,split,seed,train_min,params_m,best_val_miou
+classical,train,42,8.07,0.0,65.3
