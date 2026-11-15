@@ -30,10 +30,11 @@ ERRORS: dict[str, str] = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load every method once at startup and record any load failures."""
+    """Load and warm up every method once at startup, recording any load failures."""
     for key, info in METHODS.items():
         try:
             MODELS[key] = info["module"].load(None, DEVICE)
+            info["module"].predict(MODELS[key], np.zeros((64, 64, 3), np.uint8))
         except FileNotFoundError as exc:
             ERRORS[key] = f"checkpoint not found: {Path(exc.filename).name}"
         except Exception as exc:
