@@ -3,6 +3,9 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export type MethodKey = "classical" | "scratch" | "pretrained";
 
+/** Display names, in the order the result cards are shown. */
+export const METHOD_NAMES: Record<MethodKey, string> = { classical: "Graph cut", scratch: "U-Net", pretrained: "SegFormer-B0" };
+
 export interface MethodResult {
   method: MethodKey;
   name?: string;

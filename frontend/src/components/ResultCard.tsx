@@ -1,4 +1,4 @@
-/** One method's output: before/after mask slider, opacity control, and stats. */
+/** One method's output: before/after mask slider, opacity control, and stats, or a placeholder while it runs. */
 import { useState } from "react";
 import type { MethodResult } from "../api";
 
@@ -7,9 +7,10 @@ interface Props {
   imageUrl: string;
   aspect: number;
   recommended: boolean;
+  pending?: boolean;
 }
 
-export default function ResultCard({ result, imageUrl, aspect, recommended }: Props) {
+export default function ResultCard({ result, imageUrl, aspect, recommended, pending }: Props) {
   const [split, setSplit] = useState(100);
   const [opacity, setOpacity] = useState(0.6);
 
@@ -24,7 +25,12 @@ export default function ResultCard({ result, imageUrl, aspect, recommended }: Pr
         {recommended && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">Recommended</span>}
       </header>
 
-      {result.error ? (
+      {pending ? (
+        <div className="relative w-full overflow-hidden rounded-lg bg-slate-100" style={{ aspectRatio: aspect }}>
+          <img src={imageUrl} alt="Input" className="absolute inset-0 h-full w-full object-fill opacity-40" />
+          <p className="absolute inset-0 flex animate-pulse items-center justify-center text-sm font-medium text-slate-700">Running…</p>
+        </div>
+      ) : result.error ? (
         <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Unavailable: {result.error}</p>
       ) : (
         <>

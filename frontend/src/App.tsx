@@ -1,15 +1,28 @@
 /** Flood Mapper: upload a photo, compare the three methods, and see the recommended one. */
 import { useEffect, useState } from "react";
-import { getHealth, getRecommendation, segment, type Health, type Recommendation, type SegmentResponse } from "./api";
+import {
+  getHealth,
+  getRecommendation,
+  segment,
+  METHOD_NAMES,
+  type Health,
+  type MethodKey,
+  type MethodResult,
+  type Recommendation,
+} from "./api";
 import ResultCard from "./components/ResultCard";
 import ResultsTable from "./components/ResultsTable";
 import Uploader from "./components/Uploader";
+
+const METHODS = Object.keys(METHOD_NAMES) as MethodKey[];
+const FASTEST_FIRST: MethodKey[] = ["pretrained", "scratch", "classical"];
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [response, setResponse] = useState<SegmentResponse | null>(null);
+  const [aspect, setAspect] = useState(4 / 3);
+  const [results, setResults] = useState<Partial<Record<MethodKey, MethodResult>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,17 +37,21 @@ export default function App() {
 
   const run = async (file: File) => {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
-    setImageUrl(URL.createObjectURL(file));
-    setResponse(null);
+    const url = URL.createObjectURL(file);
+    setImageUrl(url);
+    setAspect(await imageAspect(url));
+    setResults({});
     setError(null);
     setLoading(true);
-    try {
-      setResponse(await segment(file));
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
+    for (const key of FASTEST_FIRST) {
+      try {
+        const res = await segment(file, [key]);
+        setResults((prev) => ({ ...prev, [key]: res.results[0] }));
+      } catch (e) {
+        setResults((prev) => ({ ...prev, [key]: { method: key, name: METHOD_NAMES[key], error: (e as Error).message } }));
+      }
     }
+    setLoading(false);
   };
 
   const recName = rec?.table.find((r) => r.method === rec.method)?.name;
@@ -65,17 +82,16 @@ export default function App() {
         <Uploader onFile={run} disabled={loading} />
 
         {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        {loading && <p className="mt-4 animate-pulse text-sm text-slate-600">Running all three methods…</p>}
-
-        {response && imageUrl && (
+        {imageUrl && (
           <section className="mt-6 grid gap-4 md:grid-cols-3">
-            {response.results.map((r) => (
+            {METHODS.map((key) => (
               <ResultCard
-                key={r.method}
-                result={r}
+                key={key}
+                result={results[key] ?? { method: key, name: METHOD_NAMES[key] }}
                 imageUrl={imageUrl}
-                aspect={response.width / response.height}
-                recommended={r.method === rec?.method}
+                aspect={aspect}
+                recommended={key === rec?.method}
+                pending={!results[key]}
               />
             ))}
           </section>
@@ -91,4 +107,14 @@ export default function App() {
       </main>
     </div>
   );
+}
+
+/** Resolve an image URL's width-to-height ratio. */
+function imageAspect(url: string): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img.naturalWidth / img.naturalHeight);
+    img.onerror = () => resolve(4 / 3);
+    img.src = url;
+  });
 }
