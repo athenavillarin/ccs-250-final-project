@@ -1,4 +1,4 @@
-"""Classical graph-cut flood segmentation: colour/texture GMM unaries, contrast-sensitive Potts, own BK max-flow."""
+"""Classical graph-cut flood segmentation: colour/texture/position GMM unaries, contrast-sensitive Potts, own BK max-flow."""
 from collections import deque
 from pathlib import Path
 
@@ -13,8 +13,9 @@ FREE, SOURCE, SINK = 0, 1, 2
 TERMINAL, ORPHAN, NONE = -1, -2, -3
 INF = float("inf")
 WORK_SIDE = 256
-TEXTURE_WINDOW = 7
-DEFAULT_CHECKPOINT = CHECKPOINT_DIR / "classical.npz"
+TEXTURE_WINDOWS = (7, 21)
+ROW_SCALE = 100
+DEFAULT_CHECKPOINT = CHECKPOINT_DIR / "classical_mixed.npz"
 
 
 def grid_maxflow(source_cap: np.ndarray, sink_cap: np.ndarray, right: np.ndarray, down: np.ndarray) -> tuple[float, np.ndarray]:
@@ -233,12 +234,18 @@ def gmm_nll(x: np.ndarray, gmm: dict) -> np.ndarray:
     return -(top + np.log(np.exp(logs - top).sum(0)))
 
 
+def local_std(light: np.ndarray, window: int) -> np.ndarray:
+    """Standard deviation of lightness in a square window, a smoothness cue (calm water is flat)."""
+    var = uniform_filter(light**2, window) - uniform_filter(light, window) ** 2
+    return np.sqrt(np.maximum(var, 0))
+
+
 def features(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Downscale to WORK_SIDE and return (Lab + local lightness std) features and the Lab image."""
+    """Downscale to WORK_SIDE and return (Lab, two-scale texture, row position) features and the Lab image."""
     lab = rgb_to_lab(resize_long(image, WORK_SIDE))
     light = lab[..., 0]
-    var = uniform_filter(light**2, TEXTURE_WINDOW) - uniform_filter(light, TEXTURE_WINDOW) ** 2
-    return np.dstack([lab, np.sqrt(np.maximum(var, 0))]), lab
+    row = np.broadcast_to(np.linspace(0, ROW_SCALE, light.shape[0], dtype=np.float32)[:, None], light.shape)
+    return np.dstack([lab, *(local_std(light, w) for w in TEXTURE_WINDOWS), row]), lab
 
 
 def unary(feats: np.ndarray, model: dict) -> tuple[np.ndarray, np.ndarray]:
