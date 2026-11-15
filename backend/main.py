@@ -119,9 +119,15 @@ def recommendation() -> dict:
     rows = load_results()
     if not rows:
         return {"method": None, "explanation": "Results are not available yet.", "table": []}
-    best = max(rows, key=lambda r: float(r["miou"]))
+    ranked = sorted(rows, key=lambda r: float(r["miou"]), reverse=True)
+    best, runner_up = ranked[0], ranked[1]
     fastest = min(rows, key=lambda r: float(r["runtime_ms"]))
-    text = f"{best['name']} has the highest test mIoU ({float(best['miou']):.1f}%)."
-    if fastest is not best:
-        text += f" {fastest['name']} is faster ({float(fastest['runtime_ms']):.0f} ms vs {float(best['runtime_ms']):.0f} ms) if speed matters more than accuracy."
+    text = (
+        f"{best['name']} has the highest test mIoU ({float(best['miou']):.1f}%), "
+        f"{float(best['miou']) - float(runner_up['miou']):.1f} points above {runner_up['name']}, "
+        f"at {float(best['runtime_ms']):.0f} ms per image ({best['device']}) with {float(best['params_m']):.1f} M parameters."
+    )
+    if float(fastest["runtime_ms"]) < 0.5 * float(best["runtime_ms"]):
+        text += (f" {fastest['name']} is over twice as fast ({float(fastest['runtime_ms']):.0f} ms) "
+                 "if speed matters more than accuracy.")
     return {"method": best["method"], "explanation": text, "table": rows}
