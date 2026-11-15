@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from src.utils.image import resize_long, resize_to
 from src.utils.paths import CHECKPOINT_DIR
 
 FREE, SOURCE, SINK = 0, 1, 2
@@ -245,13 +246,6 @@ def pairwise(lab: np.ndarray, lam: float, sigma: float) -> tuple[np.ndarray, np.
     return lam * np.exp(-dr / (2 * sigma**2)), lam * np.exp(-dd / (2 * sigma**2))
 
 
-def resize(image: np.ndarray, side: int, resample=Image.BILINEAR) -> np.ndarray:
-    """Shrink an array so its long side is at most `side`."""
-    img = Image.fromarray(image)
-    img.thumbnail((side, side), resample)
-    return np.asarray(img)
-
-
 def segment(lab: np.ndarray, model: dict) -> np.ndarray:
     """Minimize the graph-cut energy on a Lab image; returns a bool flood mask."""
     d0, d1 = unary(lab, model)
@@ -267,8 +261,8 @@ def fit(pairs, k: int = 5, per_image: int = 2000, lam: float = 5.0, sigma: float
     pixels = {0: [], 1: []}
     flood_px = total_px = 0
     for image, mask in pairs:
-        lab = rgb_to_lab(resize(image, WORK_SIDE)).reshape(-1, 3)
-        small = resize(mask, WORK_SIDE, Image.NEAREST).ravel()
+        lab = rgb_to_lab(resize_long(image, WORK_SIDE)).reshape(-1, 3)
+        small = resize_long(mask, WORK_SIDE, Image.NEAREST).ravel()
         flood_px += int(small.sum())
         total_px += small.size
         for c in (0, 1):
@@ -301,6 +295,5 @@ def load(checkpoint_path: str | None = None, device: str = "cpu") -> dict:
 
 def predict(model, image: np.ndarray) -> np.ndarray:
     """Segment at WORK_SIDE resolution and upsample the mask to the input size."""
-    flood = segment(rgb_to_lab(resize(image, WORK_SIDE)), model)
-    mask = Image.fromarray(flood.astype(np.uint8)).resize((image.shape[1], image.shape[0]), Image.NEAREST)
-    return np.asarray(mask)
+    flood = segment(rgb_to_lab(resize_long(image, WORK_SIDE)), model)
+    return resize_to(flood.astype(np.uint8), *image.shape[:2])
