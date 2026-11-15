@@ -31,7 +31,7 @@ def main() -> None:
     """Parse arguments, train with early stopping, and write artifacts."""
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--method", choices=DEFAULTS, required=True)
-    ap.add_argument("--split", default="train", help="train, train_50, or train_25")
+    ap.add_argument("--split", default="train", help="train, train_50, train_25, or mixed (FloodNet + Kaggle + roadway)")
     ap.add_argument("--epochs", type=int)
     ap.add_argument("--lr", type=float)
     ap.add_argument("--weight-decay", type=float)
@@ -48,7 +48,7 @@ def main() -> None:
     tag = f"{args.method}_{args.split}_s{args.seed}"
     model = build(args.method)
     history, minutes = train(
-        model, FloodDataset(args.split, train=True), FloodDataset("val"), CHECKPOINT_DIR / f"{tag}.pt",
+        model, FloodDataset(args.split, train=True), FloodDataset("mixed_val" if args.split == "mixed" else "val"), CHECKPOINT_DIR / f"{tag}.pt",
         epochs=args.epochs, lr=args.lr, weight_decay=args.weight_decay, batch_size=args.batch_size,
         patience=args.patience, device=args.device,
     )
