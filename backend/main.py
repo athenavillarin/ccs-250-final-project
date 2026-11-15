@@ -34,8 +34,10 @@ async def lifespan(app: FastAPI):
     for key, info in METHODS.items():
         try:
             MODELS[key] = info["module"].load(None, DEVICE)
+        except FileNotFoundError as exc:
+            ERRORS[key] = f"checkpoint not found: {Path(exc.filename).name}"
         except Exception as exc:
-            ERRORS[key] = str(exc)
+            ERRORS[key] = f"{type(exc).__name__}: {exc}"
     yield
 
 
