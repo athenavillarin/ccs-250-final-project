@@ -17,13 +17,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.eval.benchmark import count_params
 from src.methods import METHODS
-from src.utils.paths import CHECKPOINT_DIR, RESULTS_DIR
+from src.utils.image import resize_long
+from src.utils.paths import RESULTS_DIR
 
 DEVICE = os.environ.get("FLOOD_DEVICE", "cpu")
 MAX_UPLOAD_MB = 10
 MAX_SIDE = 1024
 FLOOD_RGBA = (0, 120, 255, 255)
-CHECKPOINTS = {"scratch": "unet.pt", "pretrained": "segformer"}
 MODELS: dict[str, object] = {}
 ERRORS: dict[str, str] = {}
 
@@ -32,9 +32,8 @@ ERRORS: dict[str, str] = {}
 async def lifespan(app: FastAPI):
     """Load every method once at startup and record any load failures."""
     for key, info in METHODS.items():
-        ckpt = CHECKPOINT_DIR / CHECKPOINTS[key] if key in CHECKPOINTS else None
         try:
-            MODELS[key] = info["module"].load(str(ckpt) if ckpt and ckpt.exists() else None, DEVICE)
+            MODELS[key] = info["module"].load(None, DEVICE)
         except Exception as exc:
             ERRORS[key] = str(exc)
     yield
@@ -55,8 +54,7 @@ def read_image(data: bytes) -> np.ndarray:
         img = Image.open(io.BytesIO(data)).convert("RGB")
     except Exception:
         raise HTTPException(400, "Could not decode image.")
-    img.thumbnail((MAX_SIDE, MAX_SIDE))
-    return np.asarray(img)
+    return resize_long(np.asarray(img), MAX_SIDE)
 
 
 def mask_png(mask: np.ndarray) -> str:
