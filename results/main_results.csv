@@ -1,4 +1,4 @@
 method,name,slot,miou,iou_flood,dice,pixel_acc,runtime_ms,device,params_m,train_min
-classical,Graph cut,A. Classical,65.32,43.208,0.603,88.53,398.43,CPU,0.0,8.07
-scratch,U-Net,B. From scratch,77.462,62.404,0.769,93.346,19.014,CUDA,7.763,26.83
-pretrained,SegFormer-B0,C. Pretrained,83.328,72.032,0.837,95.278,23.232,CUDA,3.714,10.9
+classical,Graph cut,A. Classical,58.746,37.175,0.542,82.369,408.767,CPU,0.0,33.17
+scratch,U-Net,B. From scratch,77.908,62.882,0.772,93.689,29.538,CUDA,7.763,53.65
+pretrained,SegFormer-B0,C. Pretrained,84.287,73.569,0.848,95.614,41.037,CUDA,3.714,32.85

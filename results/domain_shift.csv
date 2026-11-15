@@ -1,0 +1,19 @@
+method,name,train,test,miou,iou_flood,dice,pixel_acc
+classical,Graph cut,train,test,63.596,40.921,0.581,87.463
+classical,Graph cut,train,kaggle_test,43.861,32.896,0.495,63.016
+classical,Graph cut,train,roadway_test,31.885,20.21,0.336,50.619
+classical,Graph cut,mixed,test,58.746,37.175,0.542,82.369
+classical,Graph cut,mixed,kaggle_test,57.203,52.052,0.685,73.276
+classical,Graph cut,mixed,roadway_test,59.904,55.421,0.713,75.315
+scratch,U-Net,train,test,77.462,62.404,0.769,93.346
+scratch,U-Net,train,kaggle_test,53.747,45.669,0.627,71.099
+scratch,U-Net,train,roadway_test,34.89,16.465,0.283,57.249
+scratch,U-Net,mixed,test,77.908,62.882,0.772,93.689
+scratch,U-Net,mixed,kaggle_test,68.794,61.402,0.761,82.729
+scratch,U-Net,mixed,roadway_test,68.219,62.497,0.769,81.831
+pretrained,SegFormer-B0,train,test,83.328,72.032,0.837,95.278
+pretrained,SegFormer-B0,train,kaggle_test,51.117,38.224,0.553,70.565
+pretrained,SegFormer-B0,train,roadway_test,32.465,4.689,0.09,61.004
+pretrained,SegFormer-B0,mixed,test,84.287,73.569,0.848,95.614
+pretrained,SegFormer-B0,mixed,kaggle_test,82.372,78.685,0.881,90.795
+pretrained,SegFormer-B0,mixed,roadway_test,87.39,84.399,0.915,93.673

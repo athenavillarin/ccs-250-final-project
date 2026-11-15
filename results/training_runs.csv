@@ -1,8 +1,11 @@
 method,split,seed,train_min,params_m,best_val_miou
-classical,train,42,8.07,0.0,65.3
 pretrained,train,42,10.9,3.714,84.51
 scratch,train,42,26.83,7.763,78.08
 pretrained,train_50,42,13.65,3.714,83.9
 scratch,train_50,42,19.34,7.763,76.52
 pretrained,train_25,42,10.44,3.714,81.85
 scratch,train_25,42,10.33,7.763,75.03
+classical,train,42,8.0,0.0,70.43
+classical,mixed,42,33.17,0.0,61.79
+scratch,mixed,42,53.65,7.763,75.17
+pretrained,mixed,42,32.85,3.714,86.15
