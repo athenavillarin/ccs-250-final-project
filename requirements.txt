@@ -9,3 +9,4 @@ torchvision>=0.16
 transformers>=4.40
 pytest>=8.0
 kagglehub>=0.3
+tabulate>=0.9
