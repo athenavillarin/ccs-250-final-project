@@ -16,6 +16,7 @@ class OnnxModel:
         """Open the model on CPU, using FLOOD_THREADS intra-op threads when set."""
         opts = ort.SessionOptions()
         opts.intra_op_num_threads = int(os.environ.get("FLOOD_THREADS", 0))
+        opts.enable_cpu_mem_arena = False
         self.session = ort.InferenceSession(str(path), opts, providers=["CPUExecutionProvider"])
         meta = self.session.get_modelmeta().custom_metadata_map
         self.side = int(meta["side"])
