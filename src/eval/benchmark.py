@@ -6,7 +6,9 @@ import numpy as np
 
 
 def count_params(model) -> float:
-    """Return trainable parameters in millions, or 0 for non-torch models."""
+    """Return trainable parameters in millions, a stored params_m for exported models, or 0 for non-neural ones."""
+    if hasattr(model, "params_m"):
+        return model.params_m
     params = getattr(model, "parameters", None)
     if params is None:
         return 0.0
