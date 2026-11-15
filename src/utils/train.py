@@ -29,17 +29,23 @@ def forward_padded(model, x: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def evaluate_loader(model, loader, device: str) -> tuple[float, dict]:
-    """Mean loss and pooled segmentation scores over a loader."""
+    """BCE + Dice pooled over all pixels of the loader, and pooled segmentation scores."""
     model.eval()
-    total, cm = 0.0, torch.zeros(2, 2, dtype=torch.long, device=device)
+    bce, pixels, inter, prob_sum, target_sum = 0.0, 0, 0.0, 0.0, 0.0
+    cm = torch.zeros(2, 2, dtype=torch.long, device=device)
     for x, y in loader:
         x, y = x.to(device), y.to(device)
         with torch.autocast(device_type=device.split(":")[0], enabled=device.startswith("cuda")):
-            logits = forward_padded(model, x)
-        total += bce_dice_loss(logits.float(), y).item() * len(x)
-        idx = 2 * y.long().flatten() + (logits > 0).long().flatten()
-        cm += torch.bincount(idx, minlength=4).reshape(2, 2)
-    return total / len(loader.dataset), scores(cm.cpu().numpy())
+            logits = forward_padded(model, x).float()
+        prob = torch.sigmoid(logits)
+        bce += F.binary_cross_entropy_with_logits(logits, y, reduction="sum").item()
+        pixels += y.numel()
+        inter += (prob * y).sum().item()
+        prob_sum += prob.sum().item()
+        target_sum += y.sum().item()
+        cm += torch.bincount(2 * y.long().flatten() + (logits > 0).long().flatten(), minlength=4).reshape(2, 2)
+    dice = 1 - (2 * inter + 1) / (prob_sum + target_sum + 1)
+    return bce / pixels + dice, scores(cm.cpu().numpy())
 
 
 def train(model, train_ds, val_ds, out_path: str | Path, epochs: int = 60, lr: float = 1e-3,
