@@ -77,3 +77,9 @@ cp .env.example .env        # set VITE_API_URL to the backend URL
 npm install
 npm run dev
 ```
+
+If `frontend/dist` exists (built with `VITE_API_URL=` empty), the backend also serves the frontend at `/`.
+
+### Deployment
+
+The app is hosted on a free Hugging Face Space (Docker, CPU basic). [deploy/space/](deploy/space/) holds the Space's `Dockerfile` and `README.md`. The image clones this repo's `main`, builds the frontend, installs CPU PyTorch, downloads the release checkpoints, and serves everything on port 7860. To set it up, create a Docker Space and upload those two files. Every rebuild picks up the latest `main`; trigger one from the Space settings ("Factory rebuild").
