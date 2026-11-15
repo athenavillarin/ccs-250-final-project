@@ -58,10 +58,10 @@ def plot_curves(history, title: str, path: str | Path) -> None:
     ax1.set_ylabel("BCE + Dice loss (unitless)")
     ax1.set_title("Loss")
     ax1.legend()
-    ax2.plot(history["epoch"], history["val_miou"], color=SERIES[1])
-    ax2.axvline(best["epoch"], color=INK_2, linestyle="--", linewidth=1)
-    ax2.text(0.03, 0.95, f"best {best['val_miou']:.1f}% at epoch {int(best['epoch'])} (dashed)",
-             transform=ax2.transAxes, va="top", color=INK_2, fontsize=9)
+    ax2.plot(history["epoch"], history["val_miou"], color=SERIES[1], label="Validation mIoU")
+    ax2.axvline(best["epoch"], color=INK_2, linestyle="--", linewidth=1,
+                label=f"Best: {best['val_miou']:.1f}% at epoch {int(best['epoch'])}")
+    ax2.legend(loc="lower right", frameon=True, facecolor="white", edgecolor="none", framealpha=1)
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Validation mIoU (%)")
     ax2.set_title("Validation mIoU")
