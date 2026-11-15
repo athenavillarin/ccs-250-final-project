@@ -97,7 +97,7 @@ async def segment(image: UploadFile = File(...), methods: str | None = Form(None
     results = []
     for key in keys:
         if key not in MODELS:
-            results.append({"method": key, "error": ERRORS.get(key, "not loaded")})
+            results.append({"method": key, "name": METHODS[key]["name"], "error": ERRORS.get(key, "not loaded")})
             continue
         start = time.perf_counter()
         mask = METHODS[key]["module"].predict(MODELS[key], rgb)
