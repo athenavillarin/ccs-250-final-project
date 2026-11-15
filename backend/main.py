@@ -6,6 +6,7 @@ import os
 import sys
 import time
 from contextlib import asynccontextmanager
+from importlib import import_module
 from pathlib import Path
 
 import numpy as np
@@ -18,26 +19,30 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.eval.benchmark import count_params
-from src.methods import METHODS
+from src.methods import INFO
 from src.utils.image import resize_long
-from src.utils.paths import RESULTS_DIR
+from src.utils.paths import CHECKPOINT_DIR, RESULTS_DIR
 
 DEVICE = os.environ.get("FLOOD_DEVICE", "cpu")
+RUNTIME = os.environ.get("FLOOD_RUNTIME", "torch")
 MAX_UPLOAD_MB = 10
 MAX_SIDE = 1024
 FLOOD_RGBA = (0, 120, 255, 255)
 FRONTEND_DIR = ROOT / "frontend" / "dist"
-MODELS: dict[str, object] = {}
+MODELS: dict[str, tuple] = {}
 ERRORS: dict[str, str] = {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load and warm up every method once at startup, recording any load failures."""
-    for key, info in METHODS.items():
+    """Load and warm up every method once at startup (deep models via ONNX when RUNTIME is onnx), recording failures."""
+    for key in INFO:
+        onnx = RUNTIME == "onnx" and key != "classical"
         try:
-            MODELS[key] = info["module"].load(None, DEVICE)
-            info["module"].predict(MODELS[key], np.zeros((64, 64, 3), np.uint8))
+            module = import_module(f"src.methods.{'onnx_model' if onnx else key}")
+            model = module.load(CHECKPOINT_DIR / f"{key}_train_s42.onnx" if onnx else None, DEVICE)
+            module.predict(model, np.zeros((64, 64, 3), np.uint8))
+            MODELS[key] = (module, model)
         except FileNotFoundError as exc:
             ERRORS[key] = f"checkpoint not found: {Path(exc.filename).name}"
         except Exception as exc:
@@ -84,7 +89,7 @@ def load_results() -> list[dict]:
 @app.get("/health")
 def health() -> dict:
     """Report service status and which methods loaded."""
-    return {"status": "ok", "device": DEVICE, "loaded": sorted(MODELS), "errors": ERRORS}
+    return {"status": "ok", "device": DEVICE, "runtime": RUNTIME, "loaded": sorted(MODELS), "errors": ERRORS}
 
 
 @app.post("/segment")
@@ -93,26 +98,27 @@ async def segment(image: UploadFile = File(...), methods: str | None = Form(None
     data = await image.read()
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f"Image exceeds {MAX_UPLOAD_MB} MB.")
-    keys = [k.strip() for k in methods.split(",")] if methods else list(METHODS)
-    unknown = [k for k in keys if k not in METHODS]
+    keys = [k.strip() for k in methods.split(",")] if methods else list(INFO)
+    unknown = [k for k in keys if k not in INFO]
     if unknown:
         raise HTTPException(400, f"Unknown methods: {unknown}")
     rgb = read_image(data)
     results = []
     for key in keys:
         if key not in MODELS:
-            results.append({"method": key, "name": METHODS[key]["name"], "error": ERRORS.get(key, "not loaded")})
+            results.append({"method": key, "name": INFO[key]["name"], "error": ERRORS.get(key, "not loaded")})
             continue
+        module, model = MODELS[key]
         start = time.perf_counter()
-        mask = METHODS[key]["module"].predict(MODELS[key], rgb)
+        mask = module.predict(model, rgb)
         runtime = 1000 * (time.perf_counter() - start)
         results.append({
             "method": key,
-            "name": METHODS[key]["name"],
+            "name": INFO[key]["name"],
             "mask_png": mask_png(mask),
             "flooded_pct": round(100 * float(mask.mean()), 2),
             "runtime_ms": round(runtime, 1),
-            "params_m": round(count_params(MODELS[key]), 2),
+            "params_m": round(count_params(model), 2),
         })
     return {"width": rgb.shape[1], "height": rgb.shape[0], "device": DEVICE, "results": results}
 
