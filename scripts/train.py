@@ -18,7 +18,7 @@ from src.utils.viz import plot_curves
 
 DEFAULTS = {
     "scratch": {"epochs": 80, "lr": 1e-3, "weight_decay": 1e-4, "patience": 12},
-    "pretrained": {"epochs": 40, "lr": 1e-4, "weight_decay": 1e-2, "patience": 8},
+    "pretrained": {"epochs": 50, "lr": 6e-5, "weight_decay": 1e-2, "patience": 10},
 }
 
 
