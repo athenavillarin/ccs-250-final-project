@@ -8,9 +8,10 @@ interface Props {
   aspect: number;
   recommended: boolean;
   pending?: boolean;
+  device?: string;
 }
 
-export default function ResultCard({ result, imageUrl, aspect, recommended, pending }: Props) {
+export default function ResultCard({ result, imageUrl, aspect, recommended, pending, device }: Props) {
   const [split, setSplit] = useState(100);
   const [opacity, setOpacity] = useState(0.6);
 
@@ -64,7 +65,7 @@ export default function ResultCard({ result, imageUrl, aspect, recommended, pend
 
           <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
             <Stat label="Flooded" value={`${result.flooded_pct?.toFixed(1)}%`} />
-            <Stat label="Runtime" value={`${Math.round(result.runtime_ms ?? 0)} ms`} />
+            <Stat label={device ? `Runtime (${device.toUpperCase()})` : "Runtime"} value={`${Math.round(result.runtime_ms ?? 0)} ms`} />
             <Stat label="Params" value={result.params_m ? `${result.params_m.toFixed(2)} M` : "0"} />
           </dl>
         </>

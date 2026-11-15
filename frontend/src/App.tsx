@@ -92,6 +92,7 @@ export default function App() {
                 aspect={aspect}
                 recommended={key === rec?.method}
                 pending={!results[key]}
+                device={health?.device}
               />
             ))}
           </section>
