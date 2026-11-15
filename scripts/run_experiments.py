@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from matplotlib.patches import Patch
 from PIL import Image
 from tqdm import tqdm
 
@@ -19,7 +20,7 @@ from src.methods import METHODS
 from src.utils.paths import CHECKPOINT_DIR, DATA_DIR, RESULTS_DIR
 from src.utils.runs import RUNS_CSV
 from src.utils.seed import SEED
-from src.utils.viz import METHOD_COLORS, overlay, plt, save
+from src.utils.viz import INK_2, METHOD_COLORS, overlay, plt, save
 
 PRED_DIR = DATA_DIR / "preds"
 DEEP = ("scratch", "pretrained")
@@ -115,14 +116,15 @@ def ablation(device: str) -> pd.DataFrame:
     df.to_csv(RESULTS_DIR / "ablation_data_size.csv", index=False)
     classical = pd.read_csv(RESULTS_DIR / "main_results.csv").set_index("method").loc["classical", "miou"]
     fig, ax = plt.subplots(figsize=(5.5, 3.6))
-    for key, g in df.groupby("method"):
-        ax.plot(g["train_images"], g["miou"], marker="o", color=METHOD_COLORS[key], label=METHODS[key]["name"])
     ax.axhline(classical, color=METHOD_COLORS["classical"], linestyle="--", linewidth=1.5,
                label=f"{METHODS['classical']['name']} (fit on full train)")
+    for key in DEEP:
+        g = df[df["method"] == key]
+        ax.plot(g["train_images"], g["miou"], marker="o", color=METHOD_COLORS[key], label=METHODS[key]["name"])
     ax.set_xlabel("Training images (count)")
     ax.set_ylabel("Test mIoU (%)")
     ax.set_title("Data-size ablation on the FloodNet test split")
-    ax.legend()
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3)
     save(fig, RESULTS_DIR / "ablation_data_size.png")
     return df
 
@@ -157,6 +159,9 @@ def efficiency(device: str, n_images: int = 30) -> pd.DataFrame:
     for y, v in enumerate(df["runtime_ms_median"]):
         ax.annotate(f"{v:.0f}", (v, y), xytext=(4, 0), textcoords="offset points", va="center", fontsize=9)
     ax.set_xscale("log")
+    ticks = [t for t in (10, 30, 100, 300, 1000, 3000) if t <= 2 * df["runtime_ms_median"].max()]
+    ax.set_xticks(ticks, [str(t) for t in ticks])
+    ax.minorticks_off()
     ax.set_xlabel("Median runtime per image (ms, log scale)")
     ax.set_title(f"Inference time on {n_images - 1} FloodNet test images")
     ax.invert_yaxis()
@@ -181,7 +186,10 @@ def ood_plot() -> None:
     ax.set_ylabel("mIoU (%)")
     ax.set_ylim(0, 100)
     ax.set_title("In-domain vs out-of-domain generalisation")
-    ax.legend(loc="upper left")
+    handles = [Patch(facecolor=INK_2, label="FloodNet test (UAV, in-domain)"),
+               Patch(facecolor=INK_2, alpha=0.45, hatch="//", edgecolor="white",
+                     label="Kaggle Flood Area (ground/news, out-of-domain)")]
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.12))
     ax.grid(axis="x", visible=False)
     save(fig, RESULTS_DIR / "ood_comparison.png")
 
@@ -211,7 +219,7 @@ def failure(n_cases: int = 4) -> pd.DataFrame:
     fig, ax = plt.subplots(figsize=(7, 4.6))
     for i, key in enumerate(METHODS):
         vals = df[df["method"] == key].set_index("class").loc[classes, "pred_flood_pct"]
-        ax.barh(y + (i - 1) * 0.27, vals, 0.25, color=METHOD_COLORS[key], label=METHODS[key]["name"])
+        ax.barh(y - (i - 1) * 0.27, vals, 0.25, color=METHOD_COLORS[key], label=METHODS[key]["name"])
     ax.set_yticks(y, [f"{c} (flood)" if f else c for c, f in zip(classes, order["is_flood"])])
     ax.set_xlabel("Pixels predicted as flood (%)")
     ax.set_xlim(0, 100)
@@ -245,6 +253,7 @@ def overlay_grid(ids: list[str], path: Path, title: str) -> None:
             ax.axis("off")
         row[0].set_ylabel(image_id)
     fig.suptitle(title)
+    fig.tight_layout(h_pad=2.5)
     save(fig, path)
 
 
