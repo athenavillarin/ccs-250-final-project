@@ -11,9 +11,11 @@ from pathlib import Path
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from src.eval.benchmark import count_params
 from src.methods import METHODS
@@ -24,6 +26,7 @@ DEVICE = os.environ.get("FLOOD_DEVICE", "cpu")
 MAX_UPLOAD_MB = 10
 MAX_SIDE = 1024
 FLOOD_RGBA = (0, 120, 255, 255)
+FRONTEND_DIR = ROOT / "frontend" / "dist"
 MODELS: dict[str, object] = {}
 ERRORS: dict[str, str] = {}
 
@@ -132,3 +135,7 @@ def recommendation() -> dict:
         text += (f" {fastest['name']} is over twice as fast ({float(fastest['runtime_ms']):.0f} ms) "
                  "if speed matters more than accuracy.")
     return {"method": best["method"], "explanation": text, "table": rows}
+
+
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
