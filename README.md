@@ -34,11 +34,11 @@ python scripts/train.py --method scratch --split train_50     # and train_25, fo
 python scripts/run_experiments.py          # all five experiments -> results/
 ```
 
-`data/` and `checkpoints/` are gitignored. Override their locations with `FLOOD_DATA_DIR` and `FLOOD_CHECKPOINT_DIR`.
+To skip training, `python scripts/download_checkpoints.py --ablation` fetches all trained checkpoints. `data/` and `checkpoints/` are gitignored. Override their locations with `FLOOD_DATA_DIR` and `FLOOD_CHECKPOINT_DIR`.
 
 ### Colab
 
-Open [notebooks/main.ipynb](notebooks/main.ipynb) in Colab with a GPU runtime and run all cells. It clones this repo, installs requirements, downloads the data to `/content/data`, and reads checkpoints from `MyDrive/flood/checkpoints` (copy the `.pt` and `.npz` files there to skip training, or set `TRAIN = True`).
+Open [notebooks/main.ipynb](notebooks/main.ipynb) in Colab with a GPU runtime and run all cells. It clones this repo, installs requirements, downloads the data to `/content/data`, and downloads the trained checkpoints from the [`checkpoints-v1` release](https://github.com/athenavillarin/ccs-250-final-project/releases/tag/checkpoints-v1). Set `TRAIN = True` to retrain instead.
 
 ## Experiments
 
