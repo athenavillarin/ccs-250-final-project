@@ -1,0 +1,6 @@
+method,name,device,runtime_ms_median,runtime_ms_p90,params_m,train_min
+classical,Graph cut,CPU,409.09,860.847,0.0,8.07
+scratch,U-Net,CPU,289.431,295.549,7.763,26.83
+scratch,U-Net,CUDA,18.683,19.361,7.763,26.83
+pretrained,SegFormer-B0,CPU,150.006,156.535,3.714,10.9
+pretrained,SegFormer-B0,CUDA,21.435,27.335,3.714,10.9
