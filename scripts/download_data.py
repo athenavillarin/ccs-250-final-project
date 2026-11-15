@@ -1,4 +1,4 @@
-"""Download FloodNet Supervised v1.0 and the Kaggle Flood Area set, storing resized image/mask pairs."""
+"""Download FloodNet Supervised v1.0 plus the Kaggle aerial and roadway flood sets, storing resized image/mask pairs."""
 import argparse
 import re
 import sys
@@ -6,6 +6,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
@@ -14,7 +15,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.utils.paths import DATA_DIR, SPLITS_DIR
 
 FLOODNET_URL = "https://www.dropbox.com/scl/fo/k33qdif15ns2qv2jdxvhx/ANGaa8iPRhvlrvcKXjnmNRc?rlkey=ao2493wzl1cltonowjdbrnp7f&dl=1"
-KAGGLE_DATASET = "faizalkarim/flood-area-segmentation"
+EXTRA_SETS = {
+    "kaggle": ("faizalkarim/flood-area-segmentation", "Image/{}.jpg", "Mask/*.png"),
+    "roadway": ("saurabhshahane/roadway-flooding-image-dataset", "Dataset/images/image_{}.jpg", "Dataset/labels/*.png"),
+}
 SPLIT_RE =re.compile(r"(?:^|/)(train|val|test)[^/]*/", re.IGNORECASE)
 
 
@@ -69,28 +73,31 @@ def extract(zip_path: Path, out_dir: Path, max_side: int) -> None:
                 lab.save(lab_path)
 
 
-def kaggle(out_dir: Path, max_side: int) -> None:
-    """Fetch the Kaggle Flood Area Segmentation set and store resized images with 0/1 masks."""
+def fetch_extra(name: str, max_side: int) -> None:
+    """Fetch a Kaggle segmentation set and store resized images with 0/1 masks plus splits/<name>.txt."""
     import kagglehub
 
-    root = Path(kagglehub.dataset_download(KAGGLE_DATASET))
+    handle, image_pattern, mask_glob = EXTRA_SETS[name]
+    root = Path(kagglehub.dataset_download(handle))
+    out_dir = DATA_DIR / name
+    (out_dir / "images").mkdir(parents=True, exist_ok=True)
+    (out_dir / "masks").mkdir(parents=True, exist_ok=True)
     ids = []
-    for mask_path in tqdm(sorted((root / "Mask").glob("*.png")), desc="kaggle"):
-        sid = mask_path.stem
-        img = Image.open(root / "Image" / f"{sid}.jpg").convert("RGB")
-        mask = Image.open(mask_path).convert("L").point(lambda v: 1 if v >= 128 else 0)
+    for mask_path in tqdm(sorted(root.glob(mask_glob)), desc=name):
+        sid = re.sub(r"\D", "", mask_path.stem)
+        img = Image.open(root / image_pattern.format(sid)).convert("RGB")
+        mask = np.asarray(Image.open(mask_path).convert("L"))
+        mask = Image.fromarray((mask >= (128 if mask.max() > 1 else 1)).astype(np.uint8))
         img.thumbnail((max_side, max_side), Image.BILINEAR)
         mask = mask.resize(img.size, Image.NEAREST)
-        (out_dir / "images").mkdir(parents=True, exist_ok=True)
-        (out_dir / "masks").mkdir(parents=True, exist_ok=True)
         img.save(out_dir / "images" / f"{sid}.jpg", quality=95)
         mask.save(out_dir / "masks" / f"{sid}.png")
         ids.append(sid)
-    (SPLITS_DIR / "kaggle.txt").write_text("\n".join(sorted(ids, key=int)) + "\n")
+    (SPLITS_DIR / f"{name}.txt").write_text("\n".join(sorted(ids, key=int)) + "\n")
 
 
 def main() -> None:
-    """Fetch FloodNet (and the out-of-domain Kaggle set), extract resized pairs, and drop the archive."""
+    """Fetch FloodNet and the Kaggle aerial and roadway sets, extract resized pairs, and drop the archive."""
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--max-side", type=int, default=1024)
     ap.add_argument("--keep-zip", action="store_true")
@@ -102,7 +109,8 @@ def main() -> None:
         extract(zip_path, DATA_DIR / "floodnet", args.max_side)
         if not args.keep_zip:
             zip_path.unlink()
-    kaggle(DATA_DIR / "kaggle", args.max_side)
+    for name in EXTRA_SETS:
+        fetch_extra(name, args.max_side)
 
 
 if __name__ == "__main__":
