@@ -1,9 +1,10 @@
-"""Classical graph-cut flood segmentation with our own Boykov-Kolmogorov max-flow."""
+"""Classical graph-cut flood segmentation: colour/texture GMM unaries, contrast-sensitive Potts, own BK max-flow."""
 from collections import deque
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from scipy.ndimage import uniform_filter
 
 from src.utils.image import resize_long, resize_to
 from src.utils.paths import CHECKPOINT_DIR
@@ -12,6 +13,7 @@ FREE, SOURCE, SINK = 0, 1, 2
 TERMINAL, ORPHAN, NONE = -1, -2, -3
 INF = float("inf")
 WORK_SIDE = 256
+TEXTURE_WINDOW = 7
 DEFAULT_CHECKPOINT = CHECKPOINT_DIR / "classical.npz"
 
 
@@ -231,12 +233,20 @@ def gmm_nll(x: np.ndarray, gmm: dict) -> np.ndarray:
     return -(top + np.log(np.exp(logs - top).sum(0)))
 
 
-def unary(lab: np.ndarray, model: dict) -> tuple[np.ndarray, np.ndarray]:
-    """Per-pixel costs of labeling non-flood (D0) and flood (D1)."""
-    x = lab.reshape(-1, 3)
-    d0 = gmm_nll(x, model["background"]) - np.log(1 - model["prior"])
-    d1 = gmm_nll(x, model["flood"]) - np.log(model["prior"])
-    return d0.reshape(lab.shape[:2]), d1.reshape(lab.shape[:2])
+def features(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Downscale to WORK_SIDE and return (Lab + local lightness std) features and the Lab image."""
+    lab = rgb_to_lab(resize_long(image, WORK_SIDE))
+    light = lab[..., 0]
+    var = uniform_filter(light**2, TEXTURE_WINDOW) - uniform_filter(light, TEXTURE_WINDOW) ** 2
+    return np.dstack([lab, np.sqrt(np.maximum(var, 0))]), lab
+
+
+def unary(feats: np.ndarray, model: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Per-pixel costs of labeling non-flood (D0) and flood (D1); bias > 0 favours flood."""
+    x = feats.reshape(-1, feats.shape[-1])
+    d0 = gmm_nll(x, model["background"])
+    d1 = gmm_nll(x, model["flood"]) - model["bias"]
+    return d0.reshape(feats.shape[:2]), d1.reshape(feats.shape[:2])
 
 
 def pairwise(lab: np.ndarray, lam: float, sigma: float) -> tuple[np.ndarray, np.ndarray]:
@@ -246,33 +256,33 @@ def pairwise(lab: np.ndarray, lam: float, sigma: float) -> tuple[np.ndarray, np.
     return lam * np.exp(-dr / (2 * sigma**2)), lam * np.exp(-dd / (2 * sigma**2))
 
 
-def segment(lab: np.ndarray, model: dict) -> np.ndarray:
-    """Minimize the graph-cut energy on a Lab image; returns a bool flood mask."""
-    d0, d1 = unary(lab, model)
+def segment(image: np.ndarray, model: dict) -> np.ndarray:
+    """Minimize the graph-cut energy at WORK_SIDE; returns a bool flood mask."""
+    feats, lab = features(image)
+    d0, d1 = unary(feats, model)
     low = np.minimum(d0, d1)
     right, down = pairwise(lab, model["lam"], model["sigma"])
     _, flood = grid_maxflow(d0 - low, d1 - low, right, down)
     return flood
 
 
-def fit(pairs, k: int = 5, per_image: int = 2000, lam: float = 5.0, sigma: float = 30.0, seed: int = 0) -> dict:
-    """Learn flood and background colour GMMs from (image, mask) training pairs."""
+def fit(pairs, k: int = 5, per_image: int = 2000, lam: float = 20.0, sigma: float = 10.0, bias: float = 0.0,
+        seed: int = 0) -> dict:
+    """Learn flood and background feature GMMs from (image, mask) training pairs."""
     rng = np.random.default_rng(seed)
     pixels = {0: [], 1: []}
-    flood_px = total_px = 0
     for image, mask in pairs:
-        lab = rgb_to_lab(resize_long(image, WORK_SIDE)).reshape(-1, 3)
+        feats = features(image)[0]
+        feats = feats.reshape(-1, feats.shape[-1])
         small = resize_long(mask, WORK_SIDE, Image.NEAREST).ravel()
-        flood_px += int(small.sum())
-        total_px += small.size
         for c in (0, 1):
             idx = np.flatnonzero(small == c)
             if len(idx):
-                pixels[c].append(lab[rng.choice(idx, min(per_image, len(idx)), replace=False)])
+                pixels[c].append(feats[rng.choice(idx, min(per_image, len(idx)), replace=False)])
     return {
         "background": fit_gmm(np.concatenate(pixels[0]), k, seed),
         "flood": fit_gmm(np.concatenate(pixels[1]), k, seed),
-        "prior": flood_px / total_px,
+        "bias": bias,
         "lam": lam,
         "sigma": sigma,
     }
@@ -282,18 +292,18 @@ def save(model: dict, path: str | Path = DEFAULT_CHECKPOINT) -> None:
     """Write model parameters to an .npz file."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     flat = {f"{c}_{key}": v for c in ("background", "flood") for key, v in model[c].items()}
-    np.savez(path, prior=model["prior"], lam=model["lam"], sigma=model["sigma"], **flat)
+    np.savez(path, bias=model["bias"], lam=model["lam"], sigma=model["sigma"], **flat)
 
 
 def load(checkpoint_path: str | None = None, device: str = "cpu") -> dict:
-    """Load fitted colour models and smoothness parameters from an .npz file."""
+    """Load fitted feature models, bias, and smoothness parameters from an .npz file."""
     data = np.load(checkpoint_path or DEFAULT_CHECKPOINT)
     model = {c: {key: data[f"{c}_{key}"] for key in ("weights", "means", "covs")} for c in ("background", "flood")}
-    model.update(prior=float(data["prior"]), lam=float(data["lam"]), sigma=float(data["sigma"]))
+    model.update(bias=float(data["bias"]), lam=float(data["lam"]), sigma=float(data["sigma"]))
     return model
 
 
 def predict(model, image: np.ndarray) -> np.ndarray:
     """Segment at WORK_SIDE resolution and upsample the mask to the input size."""
-    flood = segment(rgb_to_lab(resize_long(image, WORK_SIDE)), model)
+    flood = segment(image, model)
     return resize_to(flood.astype(np.uint8), *image.shape[:2])
