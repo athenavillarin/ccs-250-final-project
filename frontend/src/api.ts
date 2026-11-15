@@ -44,3 +44,25 @@ export function segment(file: File, methods?: MethodKey[]) {
   if (methods) body.append("methods", methods.join(","));
   return request<SegmentResponse>("/segment", { method: "POST", body });
 }
+
+export interface ResultRow {
+  method: MethodKey;
+  name: string;
+  slot: string;
+  miou: string;
+  dice: string;
+  pixel_acc: string;
+  runtime_ms: string;
+  device: string;
+  params_m: string;
+  train_min: string;
+}
+
+export interface Recommendation {
+  method: MethodKey | null;
+  explanation: string;
+  table: ResultRow[];
+}
+
+/** Fetch the default best method and the main results table. */
+export const getRecommendation = () => request<Recommendation>("/recommendation");
