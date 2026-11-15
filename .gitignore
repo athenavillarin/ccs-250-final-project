@@ -232,3 +232,4 @@ frontend/dist/
 .vercel/
 .netlify/
 *.tsbuildinfo
+/logs/
