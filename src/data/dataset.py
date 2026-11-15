@@ -1,4 +1,4 @@
-"""Shared loading for FloodNet and out-of-domain sets so every method reads the same splits and binary masks."""
+"""Shared loading for FloodNet and the extra flood sets so every method reads the same splits and binary masks."""
 from pathlib import Path
 
 import numpy as np
@@ -18,12 +18,22 @@ def read_split(name: str) -> list[str]:
     return (SPLITS_DIR / f"{name}.txt").read_text().split()
 
 
-OOD_SPLITS = ("kaggle",)
+EXTRA_SETS = ("kaggle", "roadway", "local")
+MIXES = {
+    "mixed": ("train", "kaggle_train", "roadway_train"),
+    "mixed_val": ("val", "kaggle_val", "roadway_val"),
+}
+
+
+def is_extra(split: str) -> bool:
+    """Whether a split belongs to a binary-mask set rather than FloodNet."""
+    return split.split("_")[0] in EXTRA_SETS
 
 
 def split_dir(name: str) -> Path:
-    """Map a split name (e.g. 'train_25', 'kaggle') to its folder on disk."""
-    return DATA_DIR / name if name in OOD_SPLITS else DATA_DIR / "floodnet" / name.split("_")[0]
+    """Map a split name (e.g. 'train_25', 'roadway_test') to its folder on disk."""
+    prefix = name.split("_")[0]
+    return DATA_DIR / prefix if prefix in EXTRA_SETS else DATA_DIR / "floodnet" / prefix
 
 
 def load_pair(split: str, image_id: str) -> tuple[np.ndarray, np.ndarray]:
@@ -31,7 +41,7 @@ def load_pair(split: str, image_id: str) -> tuple[np.ndarray, np.ndarray]:
     root = split_dir(split)
     image = np.asarray(Image.open(root / "images" / f"{image_id}.jpg").convert("RGB"))
     mask = np.asarray(Image.open(root / "masks" / f"{image_id}.png"))
-    return image, mask if split in OOD_SPLITS else to_binary(mask)
+    return image, (mask > 0).astype(np.uint8) if is_extra(split) else to_binary(mask)
 
 
 TRAIN_SIDE = 512
@@ -39,13 +49,13 @@ CROP = 384
 
 
 class FloodDataset(Dataset):
-    """Torch dataset of (image in [0,1], binary mask) pairs at TRAIN_SIDE, cached in memory."""
+    """Torch dataset of (image in [0,1], binary mask) pairs at TRAIN_SIDE, cached in memory; mixes join splits."""
 
     def __init__(self, split: str, train: bool = False):
         """Load and resize every pair once; enable augmentation when train is True."""
         self.items = []
-        for image_id in read_split(split):
-            image, mask = load_pair(split, image_id)
+        for part, image_id in ((p, i) for p in MIXES.get(split, (split,)) for i in read_split(p)):
+            image, mask = load_pair(part, image_id)
             image = np.array(resize_long(image, TRAIN_SIDE))
             mask = np.array(resize_long(mask, TRAIN_SIDE, Image.NEAREST))
             self.items.append((image, mask))
