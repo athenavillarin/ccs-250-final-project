@@ -13,7 +13,7 @@ import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from PIL import Image
+from PIL import Image, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -60,9 +60,9 @@ app.add_middleware(
 
 
 def read_image(data: bytes) -> np.ndarray:
-    """Decode an upload to RGB and shrink it so the long side is at most MAX_SIDE."""
+    """Decode an upload to upright RGB (applying EXIF rotation) and shrink its long side to at most MAX_SIDE."""
     try:
-        img = Image.open(io.BytesIO(data)).convert("RGB")
+        img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
     except Exception:
         raise HTTPException(400, "Could not decode image.")
     return resize_long(np.asarray(img), MAX_SIDE)
