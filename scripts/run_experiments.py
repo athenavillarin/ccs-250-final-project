@@ -1,4 +1,4 @@
-"""Run the five experiments (main, ablation, efficiency, out-of-domain, failure) and write tables and figures."""
+"""Run the five experiments (main, ablation, efficiency, domain shift, failure) and write tables and figures."""
 import argparse
 import sys
 import time
@@ -17,7 +17,7 @@ from src.data.dataset import load_pair, read_split, split_dir
 from src.eval.benchmark import count_params
 from src.eval.metrics import confusion, scores
 from src.methods import METHODS
-from src.utils.paths import CHECKPOINT_DIR, DATA_DIR, RESULTS_DIR
+from src.utils.paths import CHECKPOINT_DIR, DATA_DIR, RESULTS_DIR, SPLITS_DIR
 from src.utils.runs import RUNS_CSV
 from src.utils.seed import SEED
 from src.utils.viz import INK_2, METHOD_COLORS, overlay, plt, save
@@ -25,6 +25,10 @@ from src.utils.viz import INK_2, METHOD_COLORS, overlay, plt, save
 PRED_DIR = DATA_DIR / "preds"
 DEEP = ("scratch", "pretrained")
 FRACTIONS = {"train_25": 25, "train_50": 50, "train": 100}
+MAIN = "mixed"
+TRAIN_LABELS = {"train": "FloodNet only", "mixed": "FloodNet + Kaggle + roadway"}
+TEST_SETS = {"test": "FloodNet (UAV)", "kaggle_test": "Kaggle (aerial)", "roadway_test": "Roadway (street)",
+             "local": "Local photos"}
 
 
 def sync(device: str) -> None:
@@ -34,12 +38,14 @@ def sync(device: str) -> None:
         torch.cuda.synchronize()
 
 
-def checkpoint(key: str, train_split: str = "train") -> str | None:
-    """Checkpoint path for a method trained on a given split (classical uses its default)."""
-    return None if key == "classical" else str(CHECKPOINT_DIR / f"{key}_{train_split}_s{SEED}.pt")
+def checkpoint(key: str, train_split: str = MAIN) -> str:
+    """Checkpoint path for a method trained on a given split."""
+    if key == "classical":
+        return str(CHECKPOINT_DIR / f"classical_{train_split}.npz")
+    return str(CHECKPOINT_DIR / f"{key}_{train_split}_s{SEED}.pt")
 
 
-def predict_split(key: str, split: str, device: str, train_split: str = "train") -> pd.DataFrame:
+def predict_split(key: str, split: str, device: str, train_split: str = MAIN) -> pd.DataFrame:
     """Predict every image of a split once, caching masks and per-image runtimes under data/preds/."""
     out = PRED_DIR / f"{key}_{train_split}" / split
     times_csv = out / "times.csv"
@@ -63,12 +69,12 @@ def predict_split(key: str, split: str, device: str, train_split: str = "train")
     return df
 
 
-def load_pred(key: str, split: str, image_id: str, train_split: str = "train") -> np.ndarray:
+def load_pred(key: str, split: str, image_id: str, train_split: str = MAIN) -> np.ndarray:
     """Read one cached prediction."""
     return np.asarray(Image.open(PRED_DIR / f"{key}_{train_split}" / split / f"{image_id}.png"))
 
 
-def score_split(key: str, split: str, train_split: str = "train") -> tuple[dict, list[dict]]:
+def score_split(key: str, split: str, train_split: str = MAIN) -> tuple[dict, list[dict]]:
     """Pooled scores over a split plus per-image scores, from cached predictions."""
     total, rows = np.zeros((2, 2), np.int64), []
     for image_id in read_split(split):
@@ -80,7 +86,7 @@ def score_split(key: str, split: str, train_split: str = "train") -> tuple[dict,
 
 
 def main_table(device: str, split: str = "test") -> pd.DataFrame:
-    """Experiment 1 (and 4 when split is out-of-domain): the comparison table on one split."""
+    """Experiment 1: the comparison table of the deployed (mixed-trained) models on one split."""
     runs = pd.read_csv(RUNS_CSV) if RUNS_CSV.exists() else pd.DataFrame(columns=["method", "split", "train_min"])
     rows, per_image = [], []
     for key, info in METHODS.items():
@@ -88,15 +94,14 @@ def main_table(device: str, split: str = "test") -> pd.DataFrame:
         times = predict_split(key, split, dev)
         pooled, images = score_split(key, split)
         per_image += images
-        train = runs[(runs["method"] == key) & (runs["split"] == "train")]
+        train = runs[(runs["method"] == key) & (runs["split"] == MAIN)]
         model = info["module"].load(checkpoint(key), "cpu")
         rows.append({"method": key, "name": info["name"], "slot": info["slot"], **pooled,
                      "runtime_ms": times["ms"].iloc[1:].median(), "device": dev.split(":")[0].upper(),
                      "params_m": count_params(model),
                      "train_min": train["train_min"].iloc[0] if len(train) else np.nan})
     df = pd.DataFrame(rows).round(3)
-    name = "main_results" if split == "test" else f"ood_{split}"
-    df.to_csv(RESULTS_DIR / f"{name}.csv", index=False)
+    df.to_csv(RESULTS_DIR / "main_results.csv", index=False)
     pd.DataFrame(per_image).round(3).to_csv(RESULTS_DIR / f"per_image_{split}.csv", index=False)
     return df
 
@@ -114,7 +119,8 @@ def ablation(device: str) -> pd.DataFrame:
                          "train_images": len(read_split(train_split)), **pooled})
     df = pd.DataFrame(rows).round(3)
     df.to_csv(RESULTS_DIR / "ablation_data_size.csv", index=False)
-    classical = pd.read_csv(RESULTS_DIR / "main_results.csv").set_index("method").loc["classical", "miou"]
+    predict_split("classical", "test", "cpu", "train")
+    classical = score_split("classical", "test", "train")[0]["miou"]
     fig, ax = plt.subplots(figsize=(5.5, 3.6))
     ax.axhline(classical, color=METHOD_COLORS["classical"], linestyle="--", linewidth=1.5,
                label=f"{METHODS['classical']['name']} (fit on full train)")
@@ -146,7 +152,7 @@ def efficiency(device: str, n_images: int = 30) -> pd.DataFrame:
                 sync(dev)
                 if i:
                     times.append(1000 * (time.perf_counter() - start))
-            train = runs[(runs["method"] == key) & (runs["split"] == "train")]
+            train = runs[(runs["method"] == key) & (runs["split"] == MAIN)]
             rows.append({"method": key, "name": info["name"], "device": dev.split(":")[0].upper(),
                          "runtime_ms_median": np.median(times), "runtime_ms_p90": np.percentile(times, 90),
                          "params_m": count_params(model),
@@ -170,28 +176,76 @@ def efficiency(device: str, n_images: int = 30) -> pd.DataFrame:
     return df
 
 
-def ood_plot() -> None:
-    """Figure for experiment 4: in-domain vs out-of-domain mIoU per method."""
-    test = pd.read_csv(RESULTS_DIR / "main_results.csv")
-    ood = pd.read_csv(RESULTS_DIR / "ood_kaggle.csv")
-    x = np.arange(len(test))
-    fig, ax = plt.subplots(figsize=(6, 3.6))
-    ax.bar(x - 0.2, test["miou"], 0.38, color=[METHOD_COLORS[m] for m in test["method"]], label="FloodNet test (UAV)")
-    ax.bar(x + 0.2, ood["miou"], 0.38, color=[METHOD_COLORS[m] for m in ood["method"]], alpha=0.45,
-           hatch="//", edgecolor="white", label="Kaggle Flood Area (ground/news)")
-    for xi, a, b in zip(x, test["miou"], ood["miou"]):
-        ax.annotate(f"{a:.1f}", (xi - 0.2, a), xytext=(0, 3), textcoords="offset points", ha="center", fontsize=9)
-        ax.annotate(f"{b:.1f}", (xi + 0.2, b), xytext=(0, 3), textcoords="offset points", ha="center", fontsize=9)
-    ax.set_xticks(x, test["name"])
-    ax.set_ylabel("mIoU (%)")
-    ax.set_ylim(0, 100)
-    ax.set_title("In-domain vs out-of-domain generalisation")
-    handles = [Patch(facecolor=INK_2, label="FloodNet test (UAV, in-domain)"),
-               Patch(facecolor=INK_2, alpha=0.45, hatch="//", edgecolor="white",
-                     label="Kaggle Flood Area (ground/news, out-of-domain)")]
-    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.12))
-    ax.grid(axis="x", visible=False)
-    save(fig, RESULTS_DIR / "ood_comparison.png")
+def test_sets() -> list[str]:
+    """Held-out test splits to evaluate, including data/local when it has masks."""
+    return [t for t in TEST_SETS if t != "local" or (SPLITS_DIR / "local.txt").exists()]
+
+
+def domain(device: str) -> pd.DataFrame:
+    """Experiment 4: FloodNet-only vs mixed training, scored on every held-out test set."""
+    rows = []
+    for key, info in METHODS.items():
+        dev = "cpu" if key == "classical" else device
+        for train_split in TRAIN_LABELS:
+            for test_split in test_sets():
+                predict_split(key, test_split, dev, train_split)
+                pooled, _ = score_split(key, test_split, train_split)
+                rows.append({"method": key, "name": info["name"], "train": train_split, "test": test_split, **pooled})
+    df = pd.DataFrame(rows).round(3)
+    df.to_csv(RESULTS_DIR / "domain_shift.csv", index=False)
+
+    sets = test_sets()
+    fig, axes = plt.subplots(1, len(sets), figsize=(3.6 * len(sets), 3.6), sharey=True, squeeze=False)
+    x = np.arange(len(METHODS))
+    for ax, test_split in zip(axes[0], sets):
+        g = df[df["test"] == test_split].set_index(["method", "train"])["miou"]
+        for offset, train_split, style in ((-0.2, "train", {"alpha": 0.45, "hatch": "//", "edgecolor": "white"}),
+                                           (0.2, MAIN, {})):
+            vals = [g[(key, train_split)] for key in METHODS]
+            ax.bar(x + offset, vals, 0.38, color=[METHOD_COLORS[k] for k in METHODS], **style)
+            for xi, v in zip(x, vals):
+                ax.annotate(f"{v:.0f}", (xi + offset, v), xytext=(0, 2), textcoords="offset points", ha="center",
+                            fontsize=8)
+        ax.set_xticks(x, [info["name"] for info in METHODS.values()], fontsize=8)
+        ax.set_title(TEST_SETS[test_split])
+        ax.set_ylim(0, 100)
+        ax.grid(axis="x", visible=False)
+    axes[0, 0].set_ylabel("Test mIoU (%)")
+    handles = [Patch(facecolor=INK_2, alpha=0.45, hatch="//", edgecolor="white", label=TRAIN_LABELS["train"]),
+               Patch(facecolor=INK_2, label=TRAIN_LABELS[MAIN])]
+    fig.legend(handles=handles, title="Training data", loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=2)
+    fig.suptitle("Effect of adding aerial and street-level training data", y=1.02)
+    save(fig, RESULTS_DIR / "domain_shift.png")
+
+    picks = []
+    for test_split in sets:
+        ids = [i for i in read_split(test_split) if load_pair(test_split, i)[1].mean() > 0.1]
+        rng = np.random.default_rng(SEED)
+        picks += [(test_split, str(i)) for i in rng.choice(ids, min(2, len(ids)), replace=False)]
+    domain_grid(picks, RESULTS_DIR / "domain_examples.png")
+    return df
+
+
+def domain_grid(picks: list[tuple[str, str]], path: Path) -> None:
+    """Rows of input, ground truth, and each method's mask under both training sets for the same images."""
+    cols = 2 + 2 * len(METHODS)
+    fig, axes = plt.subplots(len(picks), cols, figsize=(2.6 * cols, 2.3 * len(picks)), squeeze=False)
+    for row, (test_split, image_id) in zip(axes, picks):
+        image, gt = load_pair(test_split, image_id)
+        panels = [(f"Input, {TEST_SETS[test_split]}", image), ("Ground truth", overlay(image, gt))]
+        for key, info in METHODS.items():
+            for train_split in TRAIN_LABELS:
+                pred = load_pred(key, test_split, image_id, train_split)
+                miou = scores(confusion(pred, gt))["miou"]
+                tag = "FloodNet" if train_split == "train" else "mixed"
+                panels.append((f"{info['name']}, {tag} ({miou:.0f}%)", overlay(image, pred)))
+        for ax, (label, img) in zip(row, panels):
+            ax.imshow(img)
+            ax.set_title(label, fontsize=8)
+            ax.axis("off")
+    fig.suptitle("Same images, FloodNet-only vs mixed training")
+    fig.tight_layout(h_pad=2.0)
+    save(fig, path)
 
 
 def failure(n_cases: int = 4) -> pd.DataFrame:
@@ -260,10 +314,10 @@ def overlay_grid(ids: list[str], path: Path, title: str) -> None:
 def summary() -> None:
     """Write results/SUMMARY.md with the key numbers from every experiment."""
     lines = ["# Results summary", "", "Numbers only; generated by `scripts/run_experiments.py`.", ""]
-    for title, name in [("1. Main comparison (FloodNet test)", "main_results.csv"),
-                        ("2. Data-size ablation (FloodNet test)", "ablation_data_size.csv"),
+    for title, name in [("1. Main comparison (FloodNet test, mixed-trained models)", "main_results.csv"),
+                        ("2. Data-size ablation (FloodNet-only training, FloodNet test)", "ablation_data_size.csv"),
                         ("3. Efficiency", "efficiency.csv"),
-                        ("4. Out-of-domain (Kaggle Flood Area)", "ood_kaggle.csv"),
+                        ("4. Domain shift: FloodNet-only vs mixed training on each test set", "domain_shift.csv"),
                         ("5. Failure analysis: % of each class predicted as flood", "failure_per_class.csv")]:
         path = RESULTS_DIR / name
         if not path.exists():
@@ -281,15 +335,14 @@ def summary() -> None:
 def main() -> None:
     """Run the selected experiments in dependency order."""
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--exp", nargs="+", default=["main", "ood", "ablation", "efficiency", "failure"],
-                    choices=["main", "ood", "ablation", "efficiency", "failure"])
+    ap.add_argument("--exp", nargs="+", default=["main", "domain", "ablation", "efficiency", "failure"],
+                    choices=["main", "domain", "ablation", "efficiency", "failure"])
     ap.add_argument("--device", default="cuda")
     args = ap.parse_args()
     if "main" in args.exp:
         print(main_table(args.device).to_string(index=False))
-    if "ood" in args.exp:
-        print(main_table(args.device, "kaggle").to_string(index=False))
-        ood_plot()
+    if "domain" in args.exp:
+        print(domain(args.device).to_string(index=False))
     if "ablation" in args.exp:
         print(ablation(args.device).to_string(index=False))
     if "efficiency" in args.exp:
