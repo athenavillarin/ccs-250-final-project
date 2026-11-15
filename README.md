@@ -2,6 +2,8 @@
 
 Binary flood segmentation (flood vs non-flood) on FloodNet, comparing a classical graph cut, a U-Net trained from scratch, and a fine-tuned SegFormer-B0 on the same splits and metrics. A FastAPI + React app runs all three on uploaded photos for flood mapping. See [results/SUMMARY.md](results/SUMMARY.md) for the numbers.
 
+**Live demo:** https://flood-mapper-bqp3.onrender.com (free CPU instance; the first visit after 15 idle minutes takes about a minute to wake).
+
 | Slot | Method | Module |
 |---|---|---|
 | A. Classical | Graph cut: Lab colour + texture GMM unaries, contrast-sensitive Potts, own Boykov-Kolmogorov max-flow | [src/methods/classical.py](src/methods/classical.py) |
