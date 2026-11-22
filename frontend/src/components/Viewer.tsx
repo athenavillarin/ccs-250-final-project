@@ -33,7 +33,7 @@ export default function Viewer({ imageUrl, aspect, overlay, legend, waiting, err
         ref={box}
         onPointerDown={overlay ? drag : undefined}
         onPointerMove={overlay ? drag : undefined}
-        className={`relative w-full touch-none select-none overflow-hidden rounded-xl bg-slate-200 ${overlay ? "cursor-ew-resize" : ""}`}
+        className={`relative w-full touch-none select-none overflow-hidden rounded bg-gray-200 ${overlay ? "cursor-ew-resize" : ""}`}
         style={{ aspectRatio: aspect }}
       >
         <img src={imageUrl} alt="Uploaded photo" draggable={false} className="absolute inset-0 h-full w-full object-fill" />
@@ -49,25 +49,25 @@ export default function Viewer({ imageUrl, aspect, overlay, legend, waiting, err
         {overlay && split < 100 && (
           <div className="pointer-events-none absolute inset-y-0" style={{ left: `${split}%` }}>
             <div className="h-full w-0.5 -translate-x-1/2 bg-white shadow" />
-            <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow">
-              ⟷
+            <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-white px-2 py-1 text-sm text-gray-600 shadow">
+              ||
             </div>
           </div>
         )}
         {waiting && !overlay && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-            <p className="animate-pulse rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow">{waiting}</p>
+            <p className="animate-pulse rounded bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm">{waiting}</p>
           </div>
         )}
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-6">
-            <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{error}</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8">
+            <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
           </div>
         )}
       </div>
 
       {overlay && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-600">
+        <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-4 text-sm text-gray-600">
           <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {legend.map((item) => (
               <span key={item.label} className="flex items-center gap-1.5">
@@ -85,14 +85,14 @@ export default function Viewer({ imageUrl, aspect, overlay, legend, waiting, err
               step={0.05}
               value={opacity}
               onChange={(e) => setOpacity(+e.target.value)}
-              className="w-24 accent-sky-700"
+              className="w-24"
             />
           </label>
-          <button type="button" onClick={() => setSplit(split < 100 ? 100 : 50)} className="font-medium text-sky-800 hover:underline">
+          <button type="button" onClick={() => setSplit(split < 100 ? 100 : 50)} className="font-semibold text-brand hover:underline">
             {split < 100 ? "Hide comparison" : "Compare with original"}
           </button>
           {download && (
-            <a href={download.url} download={download.name} className="font-medium text-sky-800 hover:underline sm:ml-auto">
+            <a href={download.url} download={download.name} className="font-semibold text-brand hover:underline sm:ml-auto">
               Download mask
             </a>
           )}

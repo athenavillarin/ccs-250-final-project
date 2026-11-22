@@ -9,7 +9,7 @@ export interface Mask {
 type Rgb = [number, number, number];
 
 export const ERROR_COLORS: Record<"hit" | "missed" | "false", Rgb> = {
-  hit: [0, 120, 255],
+  hit: [15, 82, 186],
   missed: [245, 158, 11],
   false: [217, 70, 239],
 };

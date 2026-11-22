@@ -28,15 +28,15 @@ export default function Samples({ onPick, active }: Props) {
             type="button"
             onClick={() => onPick(s)}
             aria-label={`Sample photo ${s.id}`}
-            className={`shrink-0 overflow-hidden rounded-lg ring-offset-2 transition hover:opacity-90 ${
-              s.id === active ? "ring-2 ring-sky-600" : "ring-1 ring-slate-200"
+            className={`shrink-0 overflow-hidden rounded border transition hover:opacity-90 ${
+              s.id === active ? "border-2 border-brand" : "border-gray-200"
             }`}
           >
             <img src={`/samples/${s.id}_thumb.jpg`} alt="" loading="lazy" className="h-16 w-[5.33rem] object-cover sm:h-20 sm:w-[6.67rem]" />
           </button>
         ))}
       </div>
-      <p className="mt-2 text-xs text-slate-500">
+      <p className="mt-2 text-sm text-gray-400">
         Flooding in Calumpit, Bulacan. Photos by Judgefloro (CC0, Wikimedia Commons); water outlines drawn by our team.
       </p>
     </div>

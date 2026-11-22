@@ -23,22 +23,22 @@ export default function MethodList({ order, results, selected, recommended, scor
               role="radio"
               aria-checked={active}
               onClick={() => onSelect(key)}
-              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left ring-1 transition-colors ${
-                active ? "bg-sky-50 ring-2 ring-sky-600" : "bg-white ring-slate-200 hover:bg-slate-50"
+              className={`flex w-full items-center gap-3 rounded px-4 py-3 text-left border transition-colors ${
+                active ? "bg-brand-light border-brand" : "bg-white border-gray-200 hover:bg-gray-50"
               }`}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-slate-900">{METHOD_INFO[key].name}</span>
+                  <span className="font-semibold text-gray-900">{METHOD_INFO[key].name}</span>
                   {key === recommended && (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                    <span className="rounded bg-brand-light px-2 py-0.5 text-sm text-brand-dark font-semibold">
                       Most accurate
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-slate-500">{METHOD_INFO[key].kind}</div>
+                <div className="text-sm text-gray-500">{METHOD_INFO[key].kind}</div>
                 {scores[key] !== undefined && (
-                  <div className="mt-1 text-xs font-medium text-slate-700">
+                  <div className="mt-1 text-sm font-semibold text-gray-700">
                     Score vs. labels: <span className="tabular-nums">{scores[key]!.toFixed(0)}%</span> mIoU
                   </div>
                 )}
@@ -54,12 +54,12 @@ export default function MethodList({ order, results, selected, recommended, scor
 
 /** Water share and processing time once a method finishes, or its pending/error state. */
 function Status({ result }: { result?: MethodResult }) {
-  if (!result) return <span className="animate-pulse text-sm text-slate-500">Running…</span>;
-  if (result.error) return <span className="text-sm font-medium text-red-700">Failed</span>;
+  if (!result) return <span className="animate-pulse text-sm text-gray-400">Running...</span>;
+  if (result.error) return <span className="text-sm font-semibold text-red-600">Failed</span>;
   return (
     <span className="text-right">
-      <span className="block text-lg font-semibold tabular-nums text-slate-900">{result.flooded_pct?.toFixed(0)}%</span>
-      <span className="block text-xs tabular-nums text-slate-500">water · {((result.runtime_ms ?? 0) / 1000).toFixed(1)} s</span>
+      <span className="block text-base font-semibold tabular-nums text-gray-900">{result.flooded_pct?.toFixed(0)}%</span>
+      <span className="block text-sm tabular-nums text-gray-400">water · {((result.runtime_ms ?? 0) / 1000).toFixed(1)} s</span>
     </span>
   );
 }
