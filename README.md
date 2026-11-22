@@ -56,7 +56,9 @@ Open [notebooks/main.ipynb](notebooks/main.ipynb) in Colab with a GPU runtime an
 | 2 | Data-size ablation (25 / 50 / 100 % of FloodNet train) | `ablation_data_size.csv`, `.png` |
 | 3 | Efficiency: CPU and GPU runtime, parameters, train time | `efficiency.csv`, `efficiency_runtime.png` |
 | 4 | Domain shift: FloodNet-only vs mixed training on the FloodNet, Kaggle, Roadway (and local) test splits | `domain_shift.csv`, `.png`, `domain_examples.png` |
-| 5 | Failure analysis: per-class flood rate, hardest cases | `failure_per_class.csv`, `.png`, `failure_cases.png` |
+| 5 | Failure analysis: per-class flood rate, hardest cases, and mIoU on 42 test images tagged for muddy water, reflections/glare, wet roads, and shadows | `failure_per_class.csv`, `.png`, `failure_cases.png`, `hard_cases.csv`, `.png`, `hard_case_examples.png` |
+
+The hard-condition tags are in `splits/hard_case_tags.csv`: 12 flooded FloodNet, 12 Roadway, and 8 Kaggle test images drawn at random (seed 42) plus the 10 local photos. The tags were assigned by an AI assistant from the images alone and are marked for team review in the `tagged_by` column.
 
 Training curves are in `curves_*.png` and `history_*.csv`; graph-cut tuning and the sanity check are in `classical_tuning_*` and `sanity_classical*`.
 
