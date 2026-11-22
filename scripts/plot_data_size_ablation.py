@@ -45,9 +45,12 @@ def main() -> None:
 
     ax.set_xticks([25, 50, 100], ["25%", "50%", "100%"])
     ax.set_xlabel("FloodNet training data")
-    ax.set_ylabel("Test mIoU (%)")
+    ax.set_ylabel("Test mIoU (%), axis does not start at 0")
     ax.set_title("Effect of training-data size on the FloodNet test split")
-    ax.set_ylim(70, 86)
+    # Zoomed axis (not from 0) so the small gaps stay readable; the y-label says so.
+    low = 5 * ((df["miou"].min() - 3) // 5)
+    high = 5 * -(-(df["miou"].max() + 3) // 5)
+    ax.set_ylim(low, high)
     ax.grid(axis="both", linestyle=":", alpha=0.35)
     ax.legend(loc="lower right", frameon=False)
     fig.tight_layout()

@@ -39,14 +39,14 @@ Training uses the shared BCE-plus-Dice objective and early stopping on validatio
 
 For every U-Net run, the script uses AdamW with an initial learning rate of \(10^{-3}\), weight decay \(10^{-4}\), batch size 8, and the common cosine learning-rate schedule. The scratch configuration allows 80 epochs and uses patience 12 for early stopping. The recorded runs are:
 
-| U-Net run | Maximum scheduled epochs | Epoch with best validation mIoU | Best validation mIoU (%) |
-|---|---:|---:|---:|
-| FloodNet only (`train`) | 53 | 41 | 78.081 |
-| Mixed (`mixed`) | 68 | 56 | 75.173 |
-| 50% FloodNet (`train_50`) | 68 | 56 | 76.519 |
-| 25% FloodNet (`train_25`) | 59 | 47 | 75.033 |
+| U-Net run | Configured epoch limit | Recorded final epoch | Epoch with best validation mIoU | Best validation mIoU (%) | Stopping outcome |
+|---|---:|---:|---:|---:|---|
+| FloodNet only (`train`) | 80 | 53 | 41 | 78.081 | Early stopping |
+| Mixed (`mixed`) | 80 | 68 | 56 | 75.173 | Early stopping |
+| 50% FloodNet (`train_50`) | 80 | 68 | 56 | 76.519 | Early stopping |
+| 25% FloodNet (`train_25`) | 80 | 59 | 47 | 75.033 | Early stopping |
 
-The maximum scheduled epoch is the last row in the saved history; early stopping is triggered by validation-mIoU patience rather than necessarily completing the configured 80-epoch limit. The exact histories and maxima are in `results/history_scratch_*.csv`, and the aggregate timing and parameter values are in `results/training_runs.csv`.
+The recorded final epoch is the last row in the saved history. Every U-Net run stopped early, 12 epochs after its best validation mIoU, before reaching the configured 80-epoch limit. The exact histories are in `results/history_scratch_*.csv`, and the aggregate timing and parameter values are in `results/training_runs.csv`.
 
 ### 2.4 SegFormer-B0
 
@@ -100,6 +100,8 @@ The fourth experiment compares FloodNet-only and mixed training. Both training c
 
 The fifth experiment aggregates test pixels by original FloodNet class and records the percentage predicted as flood. It also identifies flooded test images with the lowest mean per-image mIoU. Outputs are in `results/failure_per_class.csv`, `results/failure_per_class.png`, and `results/failure_cases.png`.
 
+The failure analysis also includes a hard-condition breakdown. The tagged set has 42 test images: 12 flooded FloodNet, 12 Roadway, and 8 Kaggle test images drawn at random (seed 42), plus the 10 local photos. Each image is tagged 1 or 0 for four conditions: muddy water, reflections or glare, wet roads, and shadows. Tags were assigned by looking at each photo alone, without the models' predictions, and one image can carry several tags. The mixed-trained models are then scored with pooled metrics on the images with and without each condition. The tags are in `splits/hard_case_tags.csv`, and the outputs are `results/hard_cases.csv`, `results/hard_cases.png`, and `results/hard_case_examples.png`.
+
 ### 3.6 Graph-Cut Tuning and Sanity Check
 
 Graph Cut parameters are tuned on held-out validation data. `results/classical_tuning_train.csv` reports the FloodNet-only validation sweep, and `results/classical_tuning_mixed.csv` reports the mixed validation sweep. The repository also includes `results/sanity_classical.csv` and a synthetic sanity visualization for testing whether the classical max-flow and segmentation implementation responds to basic controlled cases.
@@ -137,7 +139,7 @@ The most useful report figures are:
 
 - `results/figures/main_model_comparison.png`: report-ready bar comparison of mIoU, flood IoU, Dice, and pixel accuracy.
 - `results/efficiency_runtime.png`: log-scale inference runtime comparison.
-- `results/qualitative_examples.png`: representative successful predictions for all three methods.
+- `results/qualitative_examples.png`: predictions from all three methods on the two easiest flooded test images (highest mean per-image mIoU across the three methods). These are best-case examples, not typical output.
 
 The source values are in `results/main_results.csv`. The script `scripts/plot_main_comparison.py` reproduces the report-ready main-comparison figure.
 
@@ -164,13 +166,13 @@ Table 3 reports the dedicated runtime benchmark.
 
 | Method | Device | Median runtime (ms) | P90 runtime (ms) | Parameters (M) | Mixed training time (min) |
 |---|---|---:|---:|---:|---:|
-| Graph Cut | CPU | 530.932 | 751.289 | 0.000 | 16.2 |
-| U-Net | CPU | 417.908 | 421.910 | 7.763 | 47.3 |
-| U-Net | CUDA | 21.461 | 22.459 | 7.763 | 47.3 |
-| SegFormer-B0 | CPU | 204.805 | 215.315 | 3.714 | 32.85 |
-| SegFormer-B0 | CUDA | 31.084 | 50.284 | 3.714 | 32.85 |
+| Graph Cut | CPU | 561.005 | 785.919 | 0.000 | 16.2 |
+| U-Net | CPU | 416.314 | 421.710 | 7.763 | 47.3 |
+| U-Net | CUDA | 21.524 | 22.666 | 7.763 | 47.3 |
+| SegFormer-B0 | CPU | 205.659 | 215.968 | 3.714 | 32.85 |
+| SegFormer-B0 | CUDA | 32.942 | 52.588 | 3.714 | 32.85 |
 
-On CUDA, U-Net was faster than SegFormer-B0 by 9.623 ms in median runtime. On CPU, SegFormer-B0 was faster than U-Net by 213.103 ms, and Graph Cut was slower than both deep models. SegFormer-B0 has 3.714 million parameters, fewer than U-Net's 7.763 million.
+On CUDA, U-Net was faster than SegFormer-B0 by 11.418 ms in median runtime. On CPU, SegFormer-B0 was faster than U-Net by 210.655 ms, and Graph Cut was slower than both deep models. SegFormer-B0 has 3.714 million parameters, fewer than U-Net's 7.763 million.
 
 The training-time column corresponds to mixed training. SegFormer-B0 required 32.85 minutes, U-Net 47.3 minutes, and Graph Cut 16.2 minutes in the recorded mixed runs.
 
@@ -218,6 +220,22 @@ SegFormer-B0 detected 88.978% of water pixels, 84.397% of flooded-road pixels, a
 
 The hardest flooded test images are visualized in `results/failure_cases.png`. The lowest mean mIoU among flooded images was 13.8327% for image 7450, followed by 20.5533% for 7773, 22.2320% for 7743, and 24.2257% for 7772. These values are arithmetic means of the per-image mIoU values of all three methods (Graph Cut, U-Net, and SegFormer-B0), calculated by grouping `results/per_image_test.csv` by image ID and averaging its `miou` column. The failure script applies the same calculation: it filters images with more than 5% ground-truth flood coverage and uses `groupby("id")["miou"].mean().nsmallest(...)`. Therefore, `results/failure_cases.png` uses the same cross-method mean values reported here.
 
+Table 6 gives the mixed-trained models' pooled mIoU on the 42 tagged images, split by whether each condition is present.
+
+| Condition | Present? | Images | Graph Cut | U-Net | SegFormer-B0 |
+|---|---|---:|---:|---:|---:|
+| All tagged images | – | 42 | 60.744 | 72.267 | 85.622 |
+| Muddy water | Yes | 28 | 60.821 | 69.806 | 84.124 |
+| Muddy water | No | 14 | 60.522 | 78.840 | 89.498 |
+| Reflection or glare | Yes | 22 | 60.032 | 69.563 | 84.548 |
+| Reflection or glare | No | 20 | 61.216 | 76.217 | 86.795 |
+| Wet road | Yes | 8 | 60.810 | 64.280 | 86.668 |
+| Wet road | No | 34 | 60.657 | 73.212 | 85.502 |
+| Shadow | Yes | 12 | 51.101 | 64.187 | 79.853 |
+| Shadow | No | 30 | 66.637 | 77.215 | 89.119 |
+
+Shadow was the only condition that lowered mIoU for all three methods. The drop was 15.536 points for Graph Cut, 13.028 for U-Net, and 9.266 for SegFormer-B0. U-Net was the most sensitive model overall: it lost 9.034 points on muddy water, 8.932 on wet roads, and 6.654 on reflections. SegFormer-B0 lost 5.374 points on muddy water and 2.247 on reflections, and was 1.166 points higher on wet-road images. Graph Cut changed by less than 1.2 points for muddy water, reflections, and wet roads. SegFormer-B0 had the highest mIoU in every row of Table 6. The figure `results/hard_cases.png` plots these values, and `results/hard_case_examples.png` shows one tagged example per condition.
+
 ## 5. Analysis and Discussion
 
 ### 5.1 Segmentation Quality
@@ -242,15 +260,17 @@ Within the FloodNet test set, adding the extra training domains had a smaller ef
 
 ### 5.4 Efficiency and Implementation Trade-Offs
 
-At the reported CUDA benchmark, U-Net had the lower median runtime: 21.461 ms compared with 31.084 ms for SegFormer-B0. At 29.538 ms in the main test's runtime column, U-Net was also faster than SegFormer-B0's 41.037 ms. These two runtime values are reported separately because they come from different procedures in `main_results.csv` and `efficiency.csv`.
+At the reported CUDA benchmark, U-Net had the lower median runtime: 21.524 ms compared with 32.942 ms for SegFormer-B0. At 29.538 ms in the main test's runtime column, U-Net was also faster than SegFormer-B0's 41.037 ms. These two runtime values are reported separately because they come from different procedures in `main_results.csv` and `efficiency.csv`.
 
-Graph Cut had no learned parameters but was slower than both deep models on CPU. Its dedicated median runtime was 530.932 ms. U-Net's CPU median was 417.908 ms and SegFormer-B0's was 204.805 ms.
+Graph Cut had no learned parameters but was slower than both deep models on CPU. Its dedicated median runtime was 561.005 ms. U-Net's CPU median was 416.314 ms and SegFormer-B0's was 205.659 ms.
 
 SegFormer-B0 used fewer parameters than U-Net but required more GPU inference time than U-Net in the dedicated benchmark. Mixed training took 32.85 minutes for SegFormer-B0, 47.3 minutes for U-Net, and 16.2 minutes for Graph Cut. The quality-efficiency choice therefore depends on the target device: U-Net provides the fastest CUDA median runtime, SegFormer-B0 provides the highest segmentation quality and better CPU runtime, and Graph Cut requires no learned parameters but provides lower quality and slower CPU inference.
 
 ### 5.5 Interpretation of Failure Cases
 
-The per-class and per-image results provide evidence for remaining false positives and boundary or region errors, but they do not by themselves identify a causal visual mechanism for every failure. The repository's visualizations show the hardest flooded images but do not include an independent qualitative taxonomy. Accordingly, the report does not attribute failures to a single lighting, color, or texture condition.
+The per-class and per-image results provide evidence for remaining false positives and boundary or region errors, but they do not by themselves identify a causal visual mechanism for every failure. The hard-condition breakdown adds a visual view of the failures. Shadows are linked with lower mIoU for every method. U-Net also drops noticeably on muddy water, wet roads, and reflections, while SegFormer-B0 is more stable on those three. Graph Cut's mIoU is low across the board and changes little with most conditions, which fits its broadly distributed false positives.
+
+These associations should be read with care. The tagged set has 42 images, the wet-road group has only 8, tags were assigned by eye, and one image can carry several tags. Conditions also overlap with test domains; for example, 7 of the 8 wet-road images come from Roadway. The breakdown therefore shows where each model scores lower, not that a given condition causes the drop.
 
 The quantitative pattern is that Graph Cut's failures are broadly distributed across non-flood classes, while U-Net and SegFormer-B0 reduce these false positives substantially. SegFormer-B0 also improves detection of flooded water, roads, and buildings, with residual confusion concentrated in background and selected non-flood classes such as pools and vehicles.
 
@@ -305,5 +325,6 @@ The repository contains implementation and experiment files for the Graph Cut, U
 | Results: efficiency | Median/P90 runtimes, parameters, mixed training time | `results/efficiency.csv`, `results/training_runs.csv` |
 | Results: domain shift | Train-only versus mixed mIoU across domains | `results/domain_shift.csv`, `results/domain_shift.png` |
 | Results: failure patterns | Per-class flood prediction rates | `results/failure_per_class.csv`, `results/failure_per_class.png` |
+| Results: hard conditions | mIoU with and without muddy water, reflections, wet roads, and shadows | `splits/hard_case_tags.csv`, `results/hard_cases.csv`, `results/hard_cases.png`, `results/hard_case_examples.png` |
 | Results: tuning | Graph Cut validation parameter sweeps | `results/classical_tuning_train.csv`, `results/classical_tuning_mixed.csv` |
 | Training artifacts | Recorded epochs and best validation mIoU | `results/training_runs.csv`, `results/history_*.csv` |

@@ -236,3 +236,4 @@ frontend/dist/
 
 # Split of the optional, unpublished local photo set
 /splits/local.txt
+.vscode/

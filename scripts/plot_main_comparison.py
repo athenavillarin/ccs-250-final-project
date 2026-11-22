@@ -10,12 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 OUTPUT_DIR = RESULTS / "figures"
 
+METHOD_COLORS = {
+    "classical": "#4C78A8",
+    "scratch": "#F58518",
+    "pretrained": "#54A24B",
+}
+
 
 def main() -> None:
     df = pd.read_csv(RESULTS / "main_results.csv")
     df["label"] = df["name"].replace({"Graph cut": "Graph Cut"})
 
-    colors = ["#4C78A8", "#F58518", "#54A24B"]
+    colors = df["method"].map(METHOD_COLORS).tolist()
     metrics = [
         ("miou", "mIoU (%)", "Mean IoU"),
         ("iou_flood", "Flood IoU (%)", "Flood IoU"),

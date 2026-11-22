@@ -4,6 +4,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.patches import Patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -81,8 +82,12 @@ def main() -> None:
         ax.grid(axis="y", linestyle=":", alpha=0.35)
 
     axes[0].set_ylabel("Test mIoU (%)")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, title="Training data", loc="outside lower center", ncol=2)
+    # Neutral swatches: the bar handles would show Graph Cut's color for every method.
+    handles = [
+        Patch(facecolor="gray", alpha=0.42, hatch="//", edgecolor="white", label="FloodNet only"),
+        Patch(facecolor="gray", label="FloodNet + Kaggle + roadway"),
+    ]
+    fig.legend(handles=handles, title="Training data", loc="outside lower center", ncol=2)
     fig.suptitle("Effect of mixed-domain training on test mIoU", fontsize=13)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
