@@ -73,6 +73,19 @@ export default function App() {
     }
   };
 
+  /** Return to the start screen: stop any running request and clear the photo and its results. */
+  const startOver = () => {
+    current.current?.abort();
+    current.current = null;
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+    setImageUrl(null);
+    setSampleId(null);
+    setTruth(null);
+    setResults({});
+    setMasks({});
+    setMode((m) => (m === "errors" ? "mask" : m));
+  };
+
   const pickSample = async (sample: Sample) => {
     const blob = await (await fetch(sample.photo)).blob();
     run(new File([blob], `${sample.id}.jpg`, { type: blob.type }), sample);
@@ -142,7 +155,18 @@ export default function App() {
             </svg>
             Flood Mapper
           </span>
-          {imageUrl && <Uploader onFile={run} compact />}
+          {imageUrl && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={startOver}
+                className="text-sm font-semibold text-gray-600 hover:text-gray-900 hover:underline"
+              >
+                Start over
+              </button>
+              <Uploader onFile={run} compact />
+            </div>
+          )}
         </div>
       </header>
 
