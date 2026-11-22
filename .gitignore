@@ -233,3 +233,6 @@ frontend/dist/
 .netlify/
 *.tsbuildinfo
 /logs/
+
+# Split of the optional, unpublished local photo set
+/splits/local.txt

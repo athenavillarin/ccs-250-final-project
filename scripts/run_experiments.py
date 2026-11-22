@@ -178,7 +178,8 @@ def efficiency(device: str, n_images: int = 30) -> pd.DataFrame:
 
 def test_sets() -> list[str]:
     """Held-out test splits to evaluate, including data/local when it has masks."""
-    return [t for t in TEST_SETS if t != "local" or (SPLITS_DIR / "local.txt").exists()]
+    has_local = (split_dir("local") / "masks").is_dir() and (SPLITS_DIR / "local.txt").exists()
+    return [t for t in TEST_SETS if t != "local" or has_local]
 
 
 def domain(device: str) -> pd.DataFrame:
