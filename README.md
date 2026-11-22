@@ -88,6 +88,8 @@ npm run dev
 
 If `frontend/dist` exists (built with `VITE_API_URL=` empty), the backend also serves the frontend at `/`.
 
+The page runs the three methods on an uploaded photo (or a phone camera shot) and shows one method's mask at a time, with a before/after divider. Two extra views are computed in the browser: **Agreement** shades each pixel by how many methods call it water, and, for the five bundled sample photos (`frontend/public/samples/`, local test photos ph_003/004/006/008/010 with the team's labels), **Errors vs. labels** colours correct water, missed water, and false alarms and shows each method's mIoU on that photo.
+
 ### Deployment
 
 The app runs on a free [Render](https://render.com) web service (512 MB RAM, 0.1 CPU) defined in [render.yaml](render.yaml) and [deploy/Dockerfile](deploy/Dockerfile). To fit that instance it skips PyTorch: `scripts/export_onnx.py` exports the U-Net and SegFormer to ONNX, and the backend runs them with ONNX Runtime when `FLOOD_RUNTIME=onnx`. On the test set the ONNX masks give the same mIoU as PyTorch. The image builds the frontend, installs only [deploy/requirements.txt](deploy/requirements.txt), downloads `classical.npz` and the ONNX models from the release, and serves the API and UI from one URL.
