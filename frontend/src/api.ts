@@ -3,31 +3,23 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export type MethodKey = "classical" | "scratch" | "pretrained";
 
-/** Display names, in the order the result cards are shown. */
-export const METHOD_NAMES: Record<MethodKey, string> = { classical: "Graph cut", scratch: "U-Net", pretrained: "SegFormer-B0" };
+/** Display name and a short kind label per method. */
+export const METHOD_INFO: Record<MethodKey, { name: string; kind: string }> = {
+  pretrained: { name: "SegFormer-B0", kind: "Pretrained transformer, fine-tuned" },
+  scratch: { name: "U-Net", kind: "Neural network trained from scratch" },
+  classical: { name: "Graph cut", kind: "Classical, no neural network" },
+};
 
 export interface MethodResult {
   method: MethodKey;
-  name?: string;
   mask_png?: string;
   flooded_pct?: number;
   runtime_ms?: number;
-  params_m?: number;
   error?: string;
 }
 
-export interface SegmentResponse {
-  width: number;
-  height: number;
-  device: string;
+interface SegmentResponse {
   results: MethodResult[];
-}
-
-export interface Health {
-  status: string;
-  device: string;
-  loaded: MethodKey[];
-  errors: Record<string, string>;
 }
 
 /** Fetch JSON from the API and throw with the server's message on failure. */
@@ -37,35 +29,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-/** Check backend status and loaded methods. */
-export const getHealth = () => request<Health>("/health");
+/** Resolve once the backend answers, which also wakes a sleeping server. */
+export const getHealth = () => request<{ status: string }>("/health");
 
-/** Upload an image and run the chosen methods on it. */
-export function segment(file: File, methods?: MethodKey[]) {
+/** Upload an image and run one method on it. */
+export async function segment(file: File, method: MethodKey): Promise<MethodResult> {
   const body = new FormData();
   body.append("image", file);
-  if (methods) body.append("methods", methods.join(","));
-  return request<SegmentResponse>("/segment", { method: "POST", body });
+  body.append("methods", method);
+  return (await request<SegmentResponse>("/segment", { method: "POST", body })).results[0];
 }
 
-export interface ResultRow {
-  method: MethodKey;
-  name: string;
-  slot: string;
-  miou: string;
-  dice: string;
-  pixel_acc: string;
-  runtime_ms: string;
-  device: string;
-  params_m: string;
-  train_min: string;
-}
-
-export interface Recommendation {
-  method: MethodKey | null;
-  explanation: string;
-  table: ResultRow[];
-}
-
-/** Fetch the default best method and the main results table. */
-export const getRecommendation = () => request<Recommendation>("/recommendation");
+/** Key of the method with the best test score, or null if results are unavailable. */
+export const getRecommended = async () => (await request<{ method: MethodKey | null }>("/recommendation")).method;

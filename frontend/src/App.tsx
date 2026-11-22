@@ -1,111 +1,109 @@
-/** Flood Mapper: upload a photo, compare the three methods, and see the recommended one. */
+/** Flood Mapper: upload a photo and compare the water each method finds. */
 import { useEffect, useState } from "react";
-import {
-  getHealth,
-  getRecommendation,
-  segment,
-  METHOD_NAMES,
-  type Health,
-  type MethodKey,
-  type MethodResult,
-  type Recommendation,
-} from "./api";
-import ResultCard from "./components/ResultCard";
-import ResultsTable from "./components/ResultsTable";
+import { getHealth, getRecommended, segment, METHOD_INFO, type MethodKey, type MethodResult } from "./api";
+import MethodList from "./components/MethodList";
 import Uploader from "./components/Uploader";
+import Viewer from "./components/Viewer";
 
-const METHODS = Object.keys(METHOD_NAMES) as MethodKey[];
-const FASTEST_FIRST: MethodKey[] = ["pretrained", "scratch", "classical"];
+const ORDER: MethodKey[] = ["pretrained", "scratch", "classical"];
+const REPO_URL = "https://github.com/athenavillarin/ccs-250-final-project";
+
+type Server = "checking" | "waking" | "ready" | "down";
 
 export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [rec, setRec] = useState<Recommendation | null>(null);
+  const [server, setServer] = useState<Server>("checking");
+  const [recommended, setRecommended] = useState<MethodKey | null>(null);
+  const [selected, setSelected] = useState<MethodKey>("pretrained");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [aspect, setAspect] = useState(4 / 3);
   const [results, setResults] = useState<Partial<Record<MethodKey, MethodResult>>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
 
   useEffect(() => {
+    const slow = setTimeout(() => setServer((s) => (s === "checking" ? "waking" : s)), 2500);
     getHealth()
-      .then(setHealth)
-      .catch((e: Error) => setError(`Backend unreachable: ${e.message}`));
-    getRecommendation()
-      .then(setRec)
-      .catch(() => setRec(null));
+      .then(() => setServer("ready"))
+      .catch(() => setServer("down"))
+      .finally(() => clearTimeout(slow));
+    getRecommended()
+      .then((key) => {
+        setRecommended(key);
+        if (key) setSelected(key);
+      })
+      .catch(() => setRecommended(null));
+    return () => clearTimeout(slow);
   }, []);
 
   const run = async (file: File) => {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     const url = URL.createObjectURL(file);
-    setImageUrl(url);
     setAspect(await imageAspect(url));
+    setImageUrl(url);
     setResults({});
-    setError(null);
-    setLoading(true);
-    for (const key of FASTEST_FIRST) {
+    setRunning(true);
+    for (const key of ORDER) {
       try {
-        const res = await segment(file, [key]);
-        setResults((prev) => ({ ...prev, [key]: res.results[0] }));
+        const result = await segment(file, key);
+        setResults((prev) => ({ ...prev, [key]: result }));
       } catch (e) {
-        setResults((prev) => ({ ...prev, [key]: { method: key, name: METHOD_NAMES[key], error: (e as Error).message } }));
+        setResults((prev) => ({ ...prev, [key]: { method: key, error: (e as Error).message } }));
       }
     }
-    setLoading(false);
+    setRunning(false);
   };
 
-  const recName = rec?.table.find((r) => r.method === rec.method)?.name;
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold sm:text-3xl">Flood Mapper</h1>
-          <p className="mt-1 max-w-2xl text-slate-600">
-            Map floodwater in drone and phone photos with three methods: a classical graph cut, a U-Net trained from scratch,
-            and a pretrained SegFormer.
-          </p>
-          <p className="mt-2 text-xs text-slate-500">
-            {health
-              ? `Backend ${health.status} · ${health.device.toUpperCase()} · ${health.loaded.length}/3 models loaded`
-              : "Connecting to backend…"}
-          </p>
-        </header>
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          <span className="flex items-center gap-2 font-semibold">
+            <svg viewBox="0 0 24 24" className="h-6 w-6 text-sky-700" fill="currentColor" aria-hidden>
+              <path d="M12 2.5c-.3 0-.6.2-.8.4C9.6 5 6 9.7 6 13.5a6 6 0 0 0 12 0c0-3.8-3.6-8.5-5.2-10.6-.2-.2-.5-.4-.8-.4Z" />
+            </svg>
+            Flood Mapper
+          </span>
+          <div className="flex items-center gap-3">
+            {imageUrl && <Uploader onFile={run} disabled={running} compact />}
+            <a href={REPO_URL} className="text-sm text-slate-600 hover:text-slate-900">
+              Source
+            </a>
+          </div>
+        </div>
+      </header>
 
-        {rec?.method && (
-          <section className="mb-6 rounded-xl bg-sky-50 p-4 ring-1 ring-sky-200">
-            <h2 className="text-sm font-semibold text-sky-900">Recommended: {recName}</h2>
-            <p className="mt-1 text-sm text-sky-900">{rec.explanation}</p>
-          </section>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-10">
+        {server === "waking" && (
+          <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+            Starting the server. This can take up to a minute after a quiet period.
+          </p>
+        )}
+        {server === "down" && (
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
+            The server is not responding. Reload the page in a minute.
+          </p>
         )}
 
-        <Uploader onFile={run} disabled={loading} />
-
-        {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        {imageUrl && (
-          <section className="mt-6 grid gap-4 md:grid-cols-3">
-            {METHODS.map((key) => (
-              <ResultCard
-                key={key}
-                result={results[key] ?? { method: key, name: METHOD_NAMES[key] }}
-                imageUrl={imageUrl}
-                aspect={aspect}
-                recommended={key === rec?.method}
-                pending={!results[key]}
-                device={health?.device}
-              />
-            ))}
+        {!imageUrl ? (
+          <section className="mx-auto max-w-2xl">
+            <h1 className="text-2xl font-bold sm:text-3xl">Find the floodwater in a photo</h1>
+            <p className="mt-2 mb-6 text-slate-600">
+              Upload a street, drone, or aerial photo of a flood. Three methods mark the water so you can compare them.
+            </p>
+            <Uploader onFile={run} disabled={server === "down"} />
+          </section>
+        ) : (
+          <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <Viewer result={results[selected]} name={METHOD_INFO[selected].name} imageUrl={imageUrl} aspect={aspect} />
+            <div>
+              <h2 className="mb-2 text-sm font-semibold text-slate-500">Methods</h2>
+              <MethodList order={ORDER} results={results} selected={selected} recommended={recommended} onSelect={setSelected} />
+              <p className="mt-3 text-xs text-slate-500">Water share is the percentage of the photo marked as water.</p>
+            </div>
           </section>
         )}
-
-        <section className="mt-10 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <h2 className="font-semibold">How it works and test results</h2>
-          <p className="mt-1 mb-3 text-sm text-slate-600">
-            All methods use the same FloodNet train/val/test splits. Flood = water, flooded roads, and flooded buildings.
-          </p>
-          <ResultsTable rows={rec?.table ?? []} />
-        </section>
       </main>
+
+      <footer className="py-6 text-center text-xs text-slate-500">Photos are processed on the server and are not stored.</footer>
     </div>
   );
 }
