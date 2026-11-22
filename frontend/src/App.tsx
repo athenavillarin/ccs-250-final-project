@@ -6,7 +6,6 @@ import Uploader from "./components/Uploader";
 import Viewer from "./components/Viewer";
 
 const ORDER: MethodKey[] = ["pretrained", "scratch", "classical"];
-const REPO_URL = "https://github.com/athenavillarin/ccs-250-final-project";
 
 type Server = "checking" | "waking" | "ready" | "down";
 
@@ -62,12 +61,7 @@ export default function App() {
             </svg>
             Flood Mapper
           </span>
-          <div className="flex items-center gap-3">
-            {imageUrl && <Uploader onFile={run} disabled={running} compact />}
-            <a href={REPO_URL} className="text-sm text-slate-600 hover:text-slate-900">
-              Source
-            </a>
-          </div>
+          {imageUrl && <Uploader onFile={run} disabled={running} compact />}
         </div>
       </header>
 
