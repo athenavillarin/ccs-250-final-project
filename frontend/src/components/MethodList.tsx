@@ -1,4 +1,4 @@
-/** Selectable list of the three methods with each one's status and detected water share. */
+/** Selectable list of the three methods with each one's status, detected water share, and score on labelled samples. */
 import { METHOD_INFO, type MethodKey, type MethodResult } from "../api";
 
 interface Props {
@@ -6,10 +6,11 @@ interface Props {
   results: Partial<Record<MethodKey, MethodResult>>;
   selected: MethodKey;
   recommended: MethodKey | null;
+  scores: Partial<Record<MethodKey, number>>;
   onSelect: (key: MethodKey) => void;
 }
 
-export default function MethodList({ order, results, selected, recommended, onSelect }: Props) {
+export default function MethodList({ order, results, selected, recommended, scores, onSelect }: Props) {
   return (
     <ul className="flex flex-col gap-2" role="radiogroup" aria-label="Method">
       {order.map((key) => {
@@ -36,6 +37,11 @@ export default function MethodList({ order, results, selected, recommended, onSe
                   )}
                 </div>
                 <div className="text-xs text-slate-500">{METHOD_INFO[key].kind}</div>
+                {scores[key] !== undefined && (
+                  <div className="mt-1 text-xs font-medium text-slate-700">
+                    Score vs. labels: <span className="tabular-nums">{scores[key]!.toFixed(0)}%</span> mIoU
+                  </div>
+                )}
               </div>
               <Status result={r} />
             </button>
