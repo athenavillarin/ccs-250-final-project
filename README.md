@@ -60,6 +60,21 @@ Open [notebooks/main.ipynb](notebooks/main.ipynb) in Colab with a GPU runtime an
 
 Training curves are in `curves_*.png` and `history_*.csv`; graph-cut tuning and the sanity check are in `classical_tuning_*` and `sanity_classical*`.
 
+### Training time
+
+Wall-clock minutes on one RTX 4060 (8 GB) with a 16-core CPU, from `results/training_runs.csv`. Graph-cut times cover fitting plus the λ/σ/bias grid search on val. Deep runs stop early on val mIoU, so the epoch count is part of the cost.
+
+| Run | Train split | Epochs (best) | Minutes | How it was timed |
+|---|---|---|---|---|
+| Graph cut | FloodNet only | – | 3.8 | rerun alone (the original fit overlapped GPU training) |
+| Graph cut | mixed | – | 16.2 | rerun alone (same reason) |
+| U-Net | FloodNet only | 53 (41) | 26.8 | original run, alone |
+| U-Net | mixed | 68 (56) | 47.3 | rerun alone to the same epoch count; the deployed weights are from the original run |
+| SegFormer-B0 | FloodNet only | 26 (16) | 10.9 | original run, alone |
+| SegFormer-B0 | mixed | 42 (32) | 32.9 | original run; a solo rerun took 0.76 min/epoch, within 3% of this run's 0.78 |
+| U-Net / SegFormer-B0 | 50 % FloodNet | 68 (56) / 50 (44) | 19.3 / 13.7 | original runs, alone |
+| U-Net / SegFormer-B0 | 25 % FloodNet | 59 (47) / 50 (45) | 10.3 / 10.4 | original runs, alone |
+
 ## App
 
 ### Backend
