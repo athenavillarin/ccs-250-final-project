@@ -1,6 +1,6 @@
 method,name,device,runtime_ms_median,runtime_ms_p90,params_m,train_min
-classical,Graph cut,CPU,545.487,893.443,0.0,33.17
-scratch,U-Net,CPU,388.336,404.774,7.763,53.65
-scratch,U-Net,CUDA,23.418,26.244,7.763,53.65
-pretrained,SegFormer-B0,CPU,184.876,201.298,3.714,32.85
-pretrained,SegFormer-B0,CUDA,35.009,59.343,3.714,32.85
+classical,Graph cut,CPU,401.172,525.205,0.0,33.17
+scratch,U-Net,CPU,416.764,428.565,7.763,53.65
+scratch,U-Net,CUDA,21.623,23.637,7.763,53.65
+pretrained,SegFormer-B0,CPU,201.304,223.859,3.714,32.85
+pretrained,SegFormer-B0,CUDA,35.282,57.7,3.714,32.85
