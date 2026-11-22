@@ -1,0 +1,28 @@
+method,name,condition,present,images,miou,iou_flood,dice,pixel_acc
+classical,Graph cut,all,True,42,60.744,51.196,0.677,77.351
+classical,Graph cut,muddy,True,28,60.821,51.652,0.681,77.276
+classical,Graph cut,muddy,False,14,60.522,50.034,0.667,77.533
+classical,Graph cut,reflection,True,22,60.032,52.899,0.692,76.012
+classical,Graph cut,reflection,False,20,61.216,47.973,0.648,79.327
+classical,Graph cut,wet_road,True,8,60.81,56.121,0.719,76.062
+classical,Graph cut,wet_road,False,34,60.657,50.55,0.672,77.492
+classical,Graph cut,shadow,True,12,51.101,39.931,0.571,69.837
+classical,Graph cut,shadow,False,30,66.637,58.224,0.736,81.488
+scratch,U-Net,all,True,42,72.267,63.691,0.778,85.662
+scratch,U-Net,muddy,True,28,69.806,61.201,0.759,83.896
+scratch,U-Net,muddy,False,14,78.84,70.977,0.83,89.966
+scratch,U-Net,reflection,True,22,69.563,62.816,0.772,83.081
+scratch,U-Net,reflection,False,20,76.217,65.611,0.792,89.47
+scratch,U-Net,wet_road,True,8,64.28,57.361,0.729,79.242
+scratch,U-Net,wet_road,False,34,73.212,64.567,0.785,86.364
+scratch,U-Net,shadow,True,12,64.187,54.479,0.705,80.109
+scratch,U-Net,shadow,False,30,77.215,69.653,0.821,88.719
+pretrained,SegFormer-B0,all,True,42,85.622,81.714,0.899,92.867
+pretrained,SegFormer-B0,muddy,True,28,84.124,80.633,0.893,91.829
+pretrained,SegFormer-B0,muddy,False,14,89.498,85.273,0.921,95.397
+pretrained,SegFormer-B0,reflection,True,22,84.548,82.003,0.901,91.873
+pretrained,SegFormer-B0,reflection,False,20,86.795,81.07,0.895,94.334
+pretrained,SegFormer-B0,wet_road,True,8,86.668,83.569,0.91,93.27
+pretrained,SegFormer-B0,wet_road,False,34,85.502,81.5,0.898,92.823
+pretrained,SegFormer-B0,shadow,True,12,79.853,76.617,0.868,89.119
+pretrained,SegFormer-B0,shadow,False,30,89.119,85.46,0.922,94.93
