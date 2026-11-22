@@ -21,6 +21,8 @@ Every method exposes `load(checkpoint_path=None, device="cpu")` and `predict(mod
 | Roadway Flooding | street level; 441 images, fixed 70/15/15 split (309 / 66 / 66) | [Kaggle: saurabhshahane/roadway-flooding-image-dataset](https://www.kaggle.com/datasets/saurabhshahane/roadway-flooding-image-dataset) ([Sazara et al., 2019](https://arxiv.org/abs/1909.00125)) |
 | Local photos | 10 Philippine street and yard flood photos, test only, labelled by the team; used when `data/local/images/*.jpg` and `data/local/masks/*.png` exist (not published; labelling protocol in `data/local/README.md`) | Wikimedia Commons |
 
+Local photos shown in `results/domain_examples.png` (faces and licence plates pixelated): [ph_001](https://commons.wikimedia.org/wiki/File:0781Effects_(floods)_of_Typhoon_Vamco_Calumpit,_Bulacan_47.jpg) and [ph_008](https://commons.wikimedia.org/wiki/File:0547San_Miguel,_Calumpit,_Bulacan_29.jpg), both by Judgefloro, CC0, via Wikimedia Commons.
+
 Two training configurations use these splits: **FloodNet only** (`train`) and **mixed** (`mixed` = FloodNet train + Kaggle train + Roadway train, validated on the matching val splits). The app and the main comparison use the mixed models; the FloodNet-only models are kept for the domain-shift experiment and the data-size ablation.
 
 FloodNet masks hold IDs 0-9 (0 = background). Flood = {1 building-flooded, 3 road-flooded, 5 water}; the mapping lives in [src/data/classes.py](src/data/classes.py). The Kaggle and Roadway masks are already binary water masks. Images are stored at 1024 px on the long side; the deep models run at 512 px and the graph cut at 256 px, and every mask is upsampled to the stored size for evaluation.
