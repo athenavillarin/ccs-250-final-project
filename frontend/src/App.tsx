@@ -8,7 +8,7 @@ import Viewer, { type LegendItem } from "./components/Viewer";
 import { AGREEMENT_COLORS, ERROR_COLORS, agreementOverlay, css, decodeMask, errorOverlay, miou, type Mask } from "./masks";
 
 const ORDER: MethodKey[] = ["pretrained", "scratch", "classical"];
-const WATER = "rgb(0 120 255)";
+const WATER = "rgb(15 82 186)";
 
 type Server = "checking" | "waking" | "ready" | "down";
 type Mode = "mask" | "agreement" | "errors";
@@ -133,11 +133,11 @@ export default function App() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900">
+      <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <span className="flex items-center gap-2 font-semibold">
-            <svg viewBox="0 0 24 24" className="h-6 w-6 text-sky-700" fill="currentColor" aria-hidden>
+          <span className="flex items-center gap-2 font-semibold text-gray-900">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-brand" fill="currentColor" aria-hidden>
               <path d="M12 2.5c-.3 0-.6.2-.8.4C9.6 5 6 9.7 6 13.5a6 6 0 0 0 12 0c0-3.8-3.6-8.5-5.2-10.6-.2-.2-.5-.4-.8-.4Z" />
             </svg>
             Flood Mapper
@@ -146,32 +146,32 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-10">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-12">
         {server === "waking" && (
-          <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+          <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Starting the server. This can take up to a minute after a quiet period.
           </p>
         )}
         {server === "down" && (
-          <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
+          <p className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             The server is not responding. Reload the page in a minute.
           </p>
         )}
 
         {!imageUrl ? (
           <section className="mx-auto max-w-2xl">
-            <h1 className="text-2xl font-bold sm:text-3xl">Find the floodwater in a photo</h1>
-            <p className="mt-2 mb-6 text-slate-600">
+            <h1 className="text-xl font-semibold text-gray-900">Find the floodwater in a photo</h1>
+            <p className="mt-2 mb-8 text-sm text-gray-500">
               Upload a street, drone, or aerial photo of a flood. Three methods mark the water so you can compare them.
             </p>
             <Uploader onFile={run} disabled={server === "down"} />
-            <h2 className="mt-8 mb-2 text-sm font-semibold text-slate-700">Or try a sample photo with hand-drawn labels</h2>
+            <h2 className="mt-8 mb-2 text-sm font-semibold text-gray-600">Or try a sample photo with hand-drawn labels</h2>
             <Samples onPick={pickSample} />
           </section>
         ) : (
-          <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <section className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <div>
-              <div className="mb-3 flex flex-wrap gap-1 rounded-lg bg-slate-200/70 p-1" role="tablist" aria-label="View">
+              <div className="mb-4 flex flex-wrap gap-1 rounded bg-gray-100 p-1" role="tablist" aria-label="View">
                 {modes.map(([key, label]) => (
                   <button
                     key={key}
@@ -179,8 +179,8 @@ export default function App() {
                     role="tab"
                     aria-selected={mode === key}
                     onClick={() => setMode(key)}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap ${
-                      mode === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                    className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors ${
+                      mode === key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
                     }`}
                   >
                     {label}
@@ -188,10 +188,10 @@ export default function App() {
                 ))}
               </div>
               <Viewer imageUrl={imageUrl} aspect={aspect} {...view} />
-              {view.note && view.overlay && <p className="mx-auto mt-2 text-xs text-slate-500">{view.note}</p>}
+              {view.note && view.overlay && <p className="mt-2 text-sm text-gray-500">{view.note}</p>}
             </div>
             <div>
-              <h2 className="mb-2 text-sm font-semibold text-slate-500">Methods</h2>
+              <h2 className="mb-2 text-sm font-semibold text-gray-500">Methods</h2>
               <MethodList
                 order={ORDER}
                 results={results}
@@ -203,15 +203,15 @@ export default function App() {
                   setMode((m) => (m === "agreement" ? "mask" : m));
                 }}
               />
-              <p className="mt-3 text-xs text-slate-500">Water share is the percentage of the photo marked as water.</p>
-              <h2 className="mt-8 mb-2 text-sm font-semibold text-slate-500">Sample photos</h2>
+              <p className="mt-4 text-sm text-gray-400">Water share is the percentage of the photo marked as water.</p>
+              <h2 className="mt-8 mb-2 text-sm font-semibold text-gray-500">Sample photos</h2>
               <Samples onPick={pickSample} active={sampleId ?? undefined} />
             </div>
           </section>
         )}
       </main>
 
-      <footer className="py-6 text-center text-xs text-slate-500">Photos are processed on the server and are not stored.</footer>
+      <footer className="py-8 text-center text-sm text-gray-400">Photos are processed on the server and are not stored.</footer>
     </div>
   );
 }
