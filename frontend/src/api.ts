@@ -40,5 +40,10 @@ export async function segment(file: File, method: MethodKey, signal?: AbortSigna
   return (await request<SegmentResponse>("/segment", { method: "POST", body, signal })).results[0];
 }
 
-/** Key of the method with the best test score, or null if results are unavailable. */
-export const getRecommended = async () => (await request<{ method: MethodKey | null }>("/recommendation")).method;
+export interface Recommendation {
+  method: MethodKey | null;
+  explanation: string;
+}
+
+/** The method with the best test score and the server's explanation of why. */
+export const getRecommended = () => request<Recommendation>("/recommendation");

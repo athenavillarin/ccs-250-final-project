@@ -16,6 +16,7 @@ type Mode = "mask" | "agreement" | "errors";
 export default function App() {
   const [server, setServer] = useState<Server>("checking");
   const [recommended, setRecommended] = useState<MethodKey | null>(null);
+  const [why, setWhy] = useState<string | null>(null);
   const [selected, setSelected] = useState<MethodKey>("pretrained");
   const [mode, setMode] = useState<Mode>("mask");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -33,9 +34,10 @@ export default function App() {
       .catch(() => setServer("down"))
       .finally(() => clearTimeout(slow));
     getRecommended()
-      .then((key) => {
-        setRecommended(key);
-        if (key) setSelected(key);
+      .then(({ method, explanation }) => {
+        setRecommended(method);
+        setWhy(method ? explanation : null);
+        if (method) setSelected(method);
       })
       .catch(() => setRecommended(null));
     return () => clearTimeout(slow);
@@ -227,6 +229,12 @@ export default function App() {
                   setMode((m) => (m === "agreement" ? "mask" : m));
                 }}
               />
+              {why && (
+                <p className="mt-4 rounded border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+                  <span className="font-semibold text-gray-900">Why {METHOD_INFO[recommended!].name}? </span>
+                  {why}
+                </p>
+              )}
               <p className="mt-4 text-sm text-gray-400">Water share is the percentage of the photo marked as water.</p>
               <h2 className="mt-8 mb-2 text-sm font-semibold text-gray-500">Sample photos</h2>
               <Samples onPick={pickSample} active={sampleId ?? undefined} />
