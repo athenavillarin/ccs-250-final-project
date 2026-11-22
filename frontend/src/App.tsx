@@ -1,5 +1,5 @@
 /** Flood Mapper: upload a photo and compare the water each method finds. */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getHealth, getRecommended, segment, METHOD_INFO, type MethodKey, type MethodResult } from "./api";
 import MethodList from "./components/MethodList";
 import Uploader from "./components/Uploader";
@@ -16,7 +16,7 @@ export default function App() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [aspect, setAspect] = useState(4 / 3);
   const [results, setResults] = useState<Partial<Record<MethodKey, MethodResult>>>({});
-  const [running, setRunning] = useState(false);
+  const current = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const slow = setTimeout(() => setServer((s) => (s === "checking" ? "waking" : s)), 2500);
@@ -34,21 +34,26 @@ export default function App() {
   }, []);
 
   const run = async (file: File) => {
+    current.current?.abort();
+    const controller = new AbortController();
+    current.current = controller;
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     const url = URL.createObjectURL(file);
-    setAspect(await imageAspect(url));
+    const ratio = await imageAspect(url);
+    if (controller.signal.aborted) return;
+    setAspect(ratio);
     setImageUrl(url);
     setResults({});
-    setRunning(true);
     for (const key of ORDER) {
       try {
-        const result = await segment(file, key);
+        const result = await segment(file, key, controller.signal);
+        if (controller.signal.aborted) return;
         setResults((prev) => ({ ...prev, [key]: result }));
       } catch (e) {
+        if (controller.signal.aborted) return;
         setResults((prev) => ({ ...prev, [key]: { method: key, error: (e as Error).message } }));
       }
     }
-    setRunning(false);
   };
 
   return (
@@ -61,7 +66,7 @@ export default function App() {
             </svg>
             Flood Mapper
           </span>
-          {imageUrl && <Uploader onFile={run} disabled={running} compact />}
+          {imageUrl && <Uploader onFile={run} compact />}
         </div>
       </header>
 

@@ -12,21 +12,23 @@ export default function Uploader({ onFile, disabled, compact }: Props) {
   const cameraInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  const pick = (files: FileList | null) => {
-    const file = files?.[0];
+  const pick = (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    input.value = "";
     if (file && file.type.startsWith("image/")) onFile(file);
   };
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    if (!disabled) pick(e.dataTransfer.files);
+    const file = e.dataTransfer.files[0];
+    if (!disabled && file?.type.startsWith("image/")) onFile(file);
   };
 
   const inputs = (
     <>
-      <input ref={fileInput} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files)} />
-      <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => pick(e.target.files)} />
+      <input ref={fileInput} type="file" accept="image/*" hidden onChange={(e) => pick(e.currentTarget)} />
+      <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => pick(e.currentTarget)} />
     </>
   );
 

@@ -32,12 +32,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 /** Resolve once the backend answers, which also wakes a sleeping server. */
 export const getHealth = () => request<{ status: string }>("/health");
 
-/** Upload an image and run one method on it. */
-export async function segment(file: File, method: MethodKey): Promise<MethodResult> {
+/** Upload an image and run one method on it; the signal cancels the request. */
+export async function segment(file: File, method: MethodKey, signal?: AbortSignal): Promise<MethodResult> {
   const body = new FormData();
   body.append("image", file);
   body.append("methods", method);
-  return (await request<SegmentResponse>("/segment", { method: "POST", body })).results[0];
+  return (await request<SegmentResponse>("/segment", { method: "POST", body, signal })).results[0];
 }
 
 /** Key of the method with the best test score, or null if results are unavailable. */
