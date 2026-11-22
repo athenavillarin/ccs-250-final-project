@@ -58,7 +58,7 @@ Open [notebooks/main.ipynb](notebooks/main.ipynb) in Colab with a GPU runtime an
 | 4 | Domain shift: FloodNet-only vs mixed training on the FloodNet, Kaggle, Roadway (and local) test splits | `domain_shift.csv`, `.png`, `domain_examples.png` |
 | 5 | Failure analysis: per-class flood rate, hardest cases, and mIoU on 42 test images tagged for muddy water, reflections/glare, wet roads, and shadows | `failure_per_class.csv`, `.png`, `failure_cases.png`, `hard_cases.csv`, `.png`, `hard_case_examples.png` |
 
-The hard-condition tags are in `splits/hard_case_tags.csv`: 12 flooded FloodNet, 12 Roadway, and 8 Kaggle test images drawn at random (seed 42) plus the 10 local photos. The tags were assigned by an AI assistant from the images alone and are marked for team review in the `tagged_by` column.
+The hard-condition tags are in `splits/hard_case_tags.csv`: 12 flooded FloodNet, 12 Roadway, and 8 Kaggle test images drawn at random (seed 42) plus the 10 local photos. Each image is tagged 1/0 for each condition by looking at the photo alone, without the models' predictions.
 
 Training curves are in `curves_*.png` and `history_*.csv`; graph-cut tuning and the sanity check are in `classical_tuning_*` and `sanity_classical*`.
 
