@@ -1,5 +1,6 @@
 """Run the five experiments (main, ablation, efficiency, domain shift, failure) and write tables and figures."""
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -227,12 +228,26 @@ def domain(device: str) -> pd.DataFrame:
     return df
 
 
+def redact(image: np.ndarray, split: str, image_id: str, block: int = 12) -> np.ndarray:
+    """Pixelate boxes listed for this image in the set's redact.json (faces, plates); display only, never scored."""
+    path = split_dir(split) / "redact.json"
+    if not path.exists():
+        return image
+    out = Image.fromarray(image)
+    for x0, y0, x1, y1 in json.loads(path.read_text(encoding="utf-8")).get(image_id, []):
+        region = out.crop((x0, y0, x1, y1))
+        small = region.resize((max(1, (x1 - x0) // block), max(1, (y1 - y0) // block)), Image.BILINEAR)
+        out.paste(small.resize(region.size, Image.NEAREST), (x0, y0))
+    return np.asarray(out)
+
+
 def domain_grid(picks: list[tuple[str, str]], path: Path) -> None:
     """Rows of input, ground truth, and each method's mask under both training sets for the same images."""
     cols = 2 + 2 * len(METHODS)
     fig, axes = plt.subplots(len(picks), cols, figsize=(2.6 * cols, 2.3 * len(picks)), squeeze=False)
     for row, (test_split, image_id) in zip(axes, picks):
         image, gt = load_pair(test_split, image_id)
+        image = redact(image, test_split, image_id)
         panels = [(f"Input, {TEST_SETS[test_split]}", image), ("Ground truth", overlay(image, gt))]
         for key, info in METHODS.items():
             for train_split in TRAIN_LABELS:
